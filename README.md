@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Start - Sistema de Gestão de RH e Recrutamento
 
-## Getting Started
+Uma plataforma moderna e integrada para gestão de talentos, recrutamento e administração de recursos humanos, construída com foco em eficiência e experiência do usuário.
 
-First, run the development server:
+## 🚀 Módulos do Sistema
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+O sistema é dividido em áreas específicas para cada tipo de usuário:
+
+- **Admin/Plataforma**: Gestão global de empresas, configurações do sistema e auditoria.
+- **Empresa**: Dashboard para publicação de vagas, triagem de candidatos e gestão de colaboradores.
+- **Candidato**: Portal para busca de vagas, inscrição e acompanhamento de processos seletivos.
+- **Gestor**: Ferramentas para acompanhamento de equipes e aprovações internas.
+- **Vagas (Público)**: Quadro de vagas público otimizado para conversão de candidatos.
+
+## 🛠️ Stack Tecnológica
+
+- **Frontend**: [Next.js](https://nextjs.org/) (App Router), [React](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/)
+- **Backend/Banco**: [Supabase](https://supabase.com/) (PostgreSQL)
+- **Autenticação**: [JWT (JSON Web Tokens)](https://jwt.io/)
+- **Componentes**: [Radix UI](https://www.radix-ui.com/), [Lucide React](https://lucide.dev/)
+
+## ⚙️ Configuração Inicial
+
+### Variáveis de Ambiente
+
+Crie um arquivo `.env.local` na raiz do projeto com as seguintes chaves:
+
+```env
+DATABASE_URL=sua_url_do_banco
+JWT_SECRET=seu_segredo_jwt
+SETUP_SECRET=seu_segredo_de_setup
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Comandos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Instalar dependências
+npm install # ou pnpm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Rodar servidor de desenvolvimento
+npm run dev
+# ou
+pnpm dev
 
-## Learn More
+# Build para produção
+npm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🧹 Limpeza de Projeto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Recentemente o projeto passou por uma limpeza para remover documentações de migração legadas e centralizar as informações essenciais neste README. Arquivos temporários e scripts de teste manuais também foram movidos para o `.gitignore`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Desenvolvido para transformar a gestão de pessoas com agilidade e tecnologia.
