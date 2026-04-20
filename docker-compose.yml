@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: startpro123
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./supabase/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro,Z
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro,Z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U startpro -d startpro"]
       interval: 5s
