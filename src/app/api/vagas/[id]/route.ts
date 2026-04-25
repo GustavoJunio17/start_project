@@ -25,13 +25,15 @@ async function handleGET(req: NextRequest, context?: { params?: { id: string } }
   const queryParams: string[] = [id]
 
   // Adicionar filtro de permissão se não for super admin/gestor
-  if (user.role !== 'super_admin' && user.role !== 'super_gestor') {
+  if (user.role !== 'super_admin' && user.role !== 'gestor_admin') {
     query += ' AND ('
-    if (user.role === 'admin' || user.role === 'gestor_rh') {
-      query += 'empresa_id = $2 OR publica = true'
+    if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+      query += 'empresa_id = $2 OR status != $3'
       queryParams.push(user.empresa_id as string)
+      queryParams.push('rascunho')
     } else {
-      query += 'publica = true'
+      query += 'status != $2'
+      queryParams.push('rascunho')
     }
     query += ')'
   }
@@ -76,25 +78,28 @@ async function handlePUT(req: NextRequest, context?: { params?: { id: string } }
   const vaga = vagaResult.rows[0]
 
   // Verificar permissão: só super_admin/gestor ou admin/gestor_rh da mesma empresa
-  if (user.role !== 'super_admin' && user.role !== 'super_gestor') {
+  if (user.role !== 'super_admin' && user.role !== 'gestor_admin') {
     if (vaga.empresa_id !== user.empresa_id) {
       return errorResponse('Voce nao tem permissao para atualizar esta vaga', 403)
     }
   }
 
-  const { titulo, descricao, requisitos, categoria, perfil_disc_ideal, publica, status } = body
+  // Edição só permitida em rascunho
+  if (vaga.status !== 'rascunho') {
+    return errorResponse('Vagas ja confirmadas nao podem ser editadas. Apenas desativadas', 403)
+  }
+
+  const { titulo, descricao, requisitos, categoria, perfil_disc_ideal, status } = body
 
   const updateQuery = `
-    UPDATE vagas 
-    SET 
+    UPDATE vagas
+    SET
       titulo = COALESCE($1, titulo),
       descricao = COALESCE($2, descricao),
       requisitos = COALESCE($3, requisitos),
       categoria = COALESCE($4, categoria),
-      perfil_disc_ideal = COALESCE($5, perfil_disc_ideal),
-      publica = COALESCE($6, publica),
-      status = COALESCE($7, status)
-    WHERE id = $8
+      perfil_disc_ideal = COALESCE($5, perfil_disc_ideal)
+    WHERE id = $6
     RETURNING *
   `
 
@@ -104,8 +109,6 @@ async function handlePUT(req: NextRequest, context?: { params?: { id: string } }
     requisitos || null,
     categoria || null,
     perfil_disc_ideal ? JSON.stringify(perfil_disc_ideal) : null,
-    publica !== undefined ? publica : null,
-    status || null,
     id,
   ])
 
@@ -142,10 +145,15 @@ async function handleDELETE(req: NextRequest, context?: { params?: { id: string 
   const vaga = vagaResult.rows[0]
 
   // Verificar permissão
-  if (user.role !== 'super_admin' && user.role !== 'super_gestor') {
+  if (user.role !== 'super_admin' && user.role !== 'gestor_admin') {
     if (vaga.empresa_id !== user.empresa_id) {
       return errorResponse('Voce nao tem permissao para deletar esta vaga', 403)
     }
+  }
+
+  // Deleção só permitida em rascunho
+  if (vaga.status !== 'rascunho') {
+    return errorResponse('Apenas vagas em rascunho podem ser deletadas', 403)
   }
 
   await pool.query('DELETE FROM vagas WHERE id = $1', [id])

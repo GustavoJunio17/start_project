@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'super_gestor' | 'admin' | 'gestor_rh' | 'colaborador' | 'candidato'
+export type Role = 'super_admin' | 'super_gestor' | 'admin' | 'gestor_rh' | 'user_empresa' | 'colaborador' | 'candidato'
 
 export type SegmentoEmpresa = 'Saude' | 'Varejo' | 'Digital' | 'Educacao' | 'Industria' | 'Servicos' | 'Outros'
 
@@ -20,7 +20,7 @@ export type StatusAgendamento = 'agendado' | 'confirmado' | 'realizado' | 'cance
 
 export type TipoAgendamento = 'online' | 'presencial'
 
-export type StatusVaga = 'aberta' | 'pausada' | 'encerrada'
+export type StatusVaga = 'rascunho' | 'aberta' | 'pausada' | 'encerrada'
 
 export type Tema = 'dark' | 'clean' | 'auto'
 
@@ -89,7 +89,6 @@ export interface Vaga {
   categoria: string | null
   perfil_disc_ideal: PerfilDISC | null
   status: StatusVaga
-  publica: boolean
   criado_por: string | null
   created_at: string
   empresa?: Empresa

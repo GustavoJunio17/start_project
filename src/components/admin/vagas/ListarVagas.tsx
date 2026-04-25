@@ -8,9 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Edit, Trash, Plus, Search, Building2, Globe, Lock } from "lucide-react"
+import { MoreHorizontal, Edit, Trash, Plus, Search, Building2, CheckCircle, Copy } from "lucide-react"
 import type { Vaga, Empresa } from "@/types/database"
 import { FormVaga } from "./FormVaga"
+import { Pagination } from "@/components/ui/pagination"
+
+const ITEMS_PER_PAGE = 20
 
 export function ListarVagas() {
   const [vagas, setVagas] = useState<(Vaga & { empresa: { nome: string } })[]>([])
@@ -23,6 +26,7 @@ export function ListarVagas() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [vagaToEdit, setVagaToEdit] = useState<Vaga | null>(null)
+  const [page, setPage] = useState(1)
 
   const fetchData = async () => {
     setLoading(true)
@@ -42,11 +46,31 @@ export function ListarVagas() {
   }, [])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta vaga?')) return
-    
+    if (!confirm('Tem certeza que deseja excluir este rascunho?')) return
+
     const { error } = await supabase.from('vagas').delete().eq('id', id)
     if (error) {
       alert('Erro ao excluir vaga: ' + error.message)
+      return
+    }
+    fetchData()
+  }
+
+  const handleConfirm = async (id: string) => {
+    if (!confirm('Confirmar esta vaga? Após confirmada, não poderá ser deletada, apenas desativada.')) return
+
+    const { error } = await supabase.from('vagas').update({ status: 'aberta' }).eq('id', id)
+    if (error) {
+      alert('Erro ao confirmar vaga: ' + error.message)
+      return
+    }
+    fetchData()
+  }
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    const { error } = await supabase.from('vagas').update({ status: newStatus }).eq('id', id)
+    if (error) {
+      alert('Erro ao atualizar status: ' + error.message)
       return
     }
     fetchData()
@@ -61,8 +85,14 @@ export function ListarVagas() {
     return matchesSearch && matchesStatus && matchesEmpresa
   })
 
+  const totalPages = Math.ceil(filteredVagas.length / ITEMS_PER_PAGE)
+  const paginatedVagas = filteredVagas.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  useEffect(() => setPage(1), [search, statusFilter, empresaFilter])
+
   const getStatusBadgeColor = (status: string) => {
     switch(status) {
+      case 'rascunho': return 'bg-blue-500 hover:bg-blue-600'
       case 'aberta': return 'bg-green-500 hover:bg-green-600'
       case 'pausada': return 'bg-yellow-500 hover:bg-yellow-600 text-yellow-950'
       case 'encerrada': return 'bg-gray-500 hover:bg-gray-600'
@@ -72,6 +102,7 @@ export function ListarVagas() {
 
   const getStatusLabel = (status: string) => {
     switch(status) {
+      case 'rascunho': return 'Rascunho'
       case 'aberta': return 'Aberta'
       case 'pausada': return 'Pausada'
       case 'encerrada': return 'Encerrada'
@@ -93,7 +124,7 @@ export function ListarVagas() {
         </div>
         
         <div className="flex flex-wrap gap-2 items-center w-full xl:w-auto">
-          <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+          <Select value={empresaFilter} onValueChange={(v) => v !== null && setEmpresaFilter(v)}>
             <SelectTrigger className="w-[200px]">
               <span className="truncate">
                 {empresaFilter === 'todas' 
@@ -111,12 +142,13 @@ export function ListarVagas() {
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => v !== null && setStatusFilter(v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos Status</SelectItem>
+              <SelectItem value="rascunho">Rascunho</SelectItem>
               <SelectItem value="aberta">Aberta</SelectItem>
               <SelectItem value="pausada">Pausada</SelectItem>
               <SelectItem value="encerrada">Encerrada</SelectItem>
@@ -137,25 +169,24 @@ export function ListarVagas() {
               <TableHead>Título da Vaga / Categoria</TableHead>
               <TableHead>Empresa</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Visibilidade</TableHead>
               <TableHead>Data de Criação</TableHead>
-              <TableHead className="w-[80px]">Ações</TableHead>
+              <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   Carregando vagas...
                 </TableCell>
               </TableRow>
             ) : filteredVagas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   Nenhuma vaga encontrada.
                 </TableCell>
               </TableRow>
-            ) : filteredVagas.map(vaga => (
+            ) : paginatedVagas.map(vaga => (
               <TableRow key={vaga.id}>
                 <TableCell>
                   <div className="font-medium text-blue-500">{vaga.titulo}</div>
@@ -172,34 +203,46 @@ export function ListarVagas() {
                     {getStatusLabel(vaga.status)}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  {vaga.publica ? (
-                    <div className="flex items-center gap-1.5 text-sm text-green-500">
-                      <Globe className="h-4 w-4" /> Pública
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Lock className="h-4 w-4" /> Privada
-                    </div>
-                  )}
-                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {new Date(vaga.created_at).toLocaleDateString('pt-BR')}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                      <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setVagaToEdit(vaga); setIsFormOpen(true); }}>
-                        <Edit className="mr-2 h-4 w-4" /> Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(vaga.id)}>
-                        <Trash className="mr-2 h-4 w-4" /> Excluir
-                      </DropdownMenuItem>
+                      {vaga.status === 'rascunho' ? (
+                        <>
+                          <DropdownMenuItem onClick={() => { setVagaToEdit(vaga); setIsFormOpen(true); }}>
+                            <Edit className="mr-2 h-4 w-4" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleConfirm(vaga.id)}>
+                            <CheckCircle className="mr-2 h-4 w-4" /> Confirmar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(vaga.id)}>
+                            <Trash className="mr-2 h-4 w-4" /> Deletar
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <>
+                          {vaga.status === 'aberta' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(vaga.id, 'pausada')}>
+                              Pausar
+                            </DropdownMenuItem>
+                          )}
+                          {vaga.status === 'pausada' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(vaga.id, 'aberta')}>
+                              Reabrir
+                            </DropdownMenuItem>
+                          )}
+                          {vaga.status !== 'encerrada' && (
+                            <DropdownMenuItem onClick={() => handleStatusChange(vaga.id, 'encerrada')}>
+                              Encerrar
+                            </DropdownMenuItem>
+                          )}
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -207,6 +250,13 @@ export function ListarVagas() {
             ))}
           </TableBody>
         </Table>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filteredVagas.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </div>
 
       {isFormOpen && (

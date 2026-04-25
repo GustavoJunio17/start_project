@@ -31,7 +31,6 @@ export default function CandidatoVagasPage() {
         .from('vagas')
         .select('*, empresa:empresas(nome)')
         .eq('status', 'aberta')
-        .eq('publica', true)
         .order('created_at', { ascending: false })
 
       setVagas(vagasData || [])

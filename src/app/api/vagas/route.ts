@@ -20,15 +20,16 @@ async function handleGET(req: NextRequest) {
   const params: (string | boolean)[] = []
 
   // Super admins veem todas as vagas
-  if (user.role === 'super_admin' || user.role === 'super_gestor') {
+  if (user.role === 'super_admin' || user.role === 'gestor_admin') {
     // Sem filtro, retorna todas
-  } else if (user.role === 'admin' || user.role === 'gestor_rh') {
-    // Admins veem vagas da sua empresa
+  } else if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+    // Admins veem vagas da sua empresa (incluindo rascunhos)
     query += 'empresa_id = $1'
     params.push(user.empresa_id as string)
   } else {
-    // Candidatos e colaboradores veem apenas vagas públicas
-    query += 'publica = true'
+    // Candidatos e colaboradores veem apenas vagas confirmadas (não rascunho)
+    query += 'status != $1'
+    params.push('rascunho')
   }
 
   query += ' ORDER BY created_at DESC'
@@ -52,14 +53,14 @@ async function handlePOST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { titulo, descricao, requisitos, categoria, perfil_disc_ideal, publica } = body
+  const { titulo, descricao, requisitos, categoria, perfil_disc_ideal } = body
 
   if (!titulo) {
     return errorResponse('Titulo da vaga e obrigatorio', 400)
   }
 
-  const empresaId = user.role === 'super_admin' || user.role === 'super_gestor' 
-    ? body.empresa_id 
+  const empresaId = user.role === 'super_admin' || user.role === 'gestor_admin'
+    ? body.empresa_id
     : user.empresa_id
 
   if (!empresaId) {
@@ -67,7 +68,7 @@ async function handlePOST(req: NextRequest) {
   }
 
   const query = `
-    INSERT INTO vagas (empresa_id, titulo, descricao, requisitos, categoria, perfil_disc_ideal, publica, criado_por)
+    INSERT INTO vagas (empresa_id, titulo, descricao, requisitos, categoria, perfil_disc_ideal, status, criado_por)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
   `
@@ -79,7 +80,7 @@ async function handlePOST(req: NextRequest) {
     requisitos || null,
     categoria || null,
     perfil_disc_ideal ? JSON.stringify(perfil_disc_ideal) : null,
-    publica ?? true,
+    'rascunho',
     user.id,
   ])
 

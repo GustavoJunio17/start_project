@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import type { User, Role } from '@/types/database'
 
 export function useAuth() {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -12,16 +14,21 @@ export function useAuth() {
 
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/me', { 
+        const res = await fetch('/api/auth/me', {
           credentials: 'include',
           cache: 'no-store'
         })
-        
+
         if (aborted) return
 
         if (res.ok) {
-          const json = await res.json()
-          setUser(json.data || json.user)
+          const contentType = res.headers.get('content-type')
+          if (contentType?.includes('application/json')) {
+            const json = await res.json()
+            setUser(json.data || json.user || json)
+          } else {
+            setUser(null)
+          }
         } else {
           setUser(null)
         }
@@ -40,21 +47,32 @@ export function useAuth() {
     }
   }, [])
 
-  const signOut = () => {
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-      .catch(error => console.error('Logout error:', error))
-    setUser(null)
+  const signOut = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      setUser(null)
+      router.push('/auth/login')
+      router.refresh()
+    }
   }
 
   const refetch = async () => {
     try {
-      const res = await fetch('/api/auth/me', { 
+      const res = await fetch('/api/auth/me', {
         credentials: 'include',
         cache: 'no-store'
       })
       if (res.ok) {
-        const json = await res.json()
-        setUser(json.data || json.user)
+        const contentType = res.headers.get('content-type')
+        if (contentType?.includes('application/json')) {
+          const json = await res.json()
+          setUser(json.data || json.user || json)
+        } else {
+          setUser(null)
+        }
       } else {
         setUser(null)
       }
@@ -70,7 +88,8 @@ export function useAuth() {
 export const ROLE_HIERARCHY: Record<Role, number> = {
   super_admin: 1,
   super_gestor: 2,
-  admin: 3,
+  admin: 2,
+  user_empresa: 3,
   gestor_rh: 4,
   colaborador: 5,
   candidato: 6,
@@ -81,7 +100,7 @@ export function canManageRole(currentRole: Role, targetRole: Role): boolean {
 }
 
 export function isAdminRole(role: Role): boolean {
-  return role === 'super_admin' || role === 'super_gestor' || role === 'admin'
+  return role === 'super_admin' || role === 'super_gestor' || role === 'user_empresa'
 }
 
 export function getHomePath(role: Role): string {
@@ -89,7 +108,7 @@ export function getHomePath(role: Role): string {
     case 'super_admin':
     case 'super_gestor':
       return '/admin/dashboard'
-    case 'admin':
+    case 'user_empresa':
     case 'gestor_rh':
       return '/empresa/dashboard'
     case 'colaborador':
@@ -97,6 +116,6 @@ export function getHomePath(role: Role): string {
     case 'candidato':
       return '/candidato/dashboard'
     default:
-      return '/auth/login'
+      return '/admin/dashboard'
   }
 }

@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/db/client"
 import { useAuth } from "@/hooks/useAuth"
@@ -29,8 +28,7 @@ export function FormVaga({ vaga, empresas, onClose, onSaved }: FormVagaProps) {
     descricao: vaga?.descricao || '',
     requisitos: vaga?.requisitos || '',
     categoria: vaga?.categoria || '',
-    status: vaga?.status || 'aberta' as StatusVaga,
-    publica: vaga ? vaga.publica : true,
+    status: vaga?.status || 'rascunho' as StatusVaga,
   })
 
   useEffect(() => {
@@ -42,7 +40,6 @@ export function FormVaga({ vaga, empresas, onClose, onSaved }: FormVagaProps) {
         requisitos: vaga.requisitos || '',
         categoria: vaga.categoria || '',
         status: vaga.status,
-        publica: vaga.publica,
       })
     }
   }, [vaga])
@@ -59,7 +56,6 @@ export function FormVaga({ vaga, empresas, onClose, onSaved }: FormVagaProps) {
         requisitos: formData.requisitos || null,
         categoria: formData.categoria || null,
         status: formData.status,
-        publica: formData.publica,
       }
 
       if (vaga) {
@@ -110,7 +106,7 @@ export function FormVaga({ vaga, empresas, onClose, onSaved }: FormVagaProps) {
               <label className="text-sm font-medium">Empresa *</label>
               <Select 
                 value={formData.empresa_id} 
-                onValueChange={(val) => setFormData(f => ({...f, empresa_id: val}))}
+                onValueChange={(val) => val !== null && setFormData(f => ({...f, empresa_id: val}))}
                 required
               >
                 <SelectTrigger>
@@ -135,35 +131,26 @@ export function FormVaga({ vaga, empresas, onClose, onSaved }: FormVagaProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select 
-                value={formData.status} 
-                onValueChange={(val: StatusVaga) => setFormData(f => ({...f, status: val}))}
-              >
-                <SelectTrigger>
-                  <span className="truncate">
-                    {formData.status === 'aberta' ? 'Aberta' : formData.status === 'pausada' ? 'Pausada' : 'Encerrada'}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aberta">Aberta</SelectItem>
-                  <SelectItem value="pausada">Pausada</SelectItem>
-                  <SelectItem value="encerrada">Encerrada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 flex flex-col justify-end pb-2">
-              <div className="flex items-center gap-2">
-                <Switch 
-                  checked={formData.publica} 
-                  onCheckedChange={val => setFormData(f => ({...f, publica: val}))} 
-                />
-                <span className="text-sm font-medium">Vaga Pública</span>
+            {vaga?.status !== 'rascunho' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(val) => val !== null && setFormData(f => ({...f, status: val as StatusVaga}))}
+                >
+                  <SelectTrigger>
+                    <span className="truncate">
+                      {formData.status === 'aberta' ? 'Aberta' : formData.status === 'pausada' ? 'Pausada' : 'Encerrada'}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aberta">Aberta</SelectItem>
+                    <SelectItem value="pausada">Pausada</SelectItem>
+                    <SelectItem value="encerrada">Encerrada</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Se ativa, a vaga ficará visível publicamente.</p>
-            </div>
+            )}
 
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Descrição</label>

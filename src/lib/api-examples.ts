@@ -34,7 +34,6 @@ export async function criarVaga(novaVaga: {
   requisitos?: string
   categoria?: string
   perfil_disc_ideal?: { D: number; I: number; S: number; C: number }
-  publica?: boolean
   empresa_id?: string
 }) {
   const response = await fetch('/api/vagas', {
@@ -75,8 +74,6 @@ export async function atualizarVaga(
     titulo: string
     descricao: string
     requisitos: string
-    status: 'aberta' | 'pausada' | 'encerrada'
-    publica: boolean
   }>,
 ) {
   const response = await fetch(`/api/vagas/${vagaId}`, {

@@ -14,7 +14,7 @@ CREATE TYPE tipo_teste AS ENUM ('disc', 'logica', 'vendas', 'atendimento');
 CREATE TYPE tipo_feedback AS ENUM ('interno_colaborador', 'externo_candidato');
 CREATE TYPE status_agendamento AS ENUM ('agendado', 'confirmado', 'realizado', 'cancelado', 'remarcado');
 CREATE TYPE tipo_agendamento AS ENUM ('online', 'presencial');
-CREATE TYPE status_vaga AS ENUM ('aberta', 'pausada', 'encerrada');
+CREATE TYPE status_vaga AS ENUM ('rascunho', 'aberta', 'pausada', 'encerrada');
 CREATE TYPE tema_type AS ENUM ('dark', 'clean', 'auto');
 CREATE TYPE tipo_alerta AS ENUM ('candidato_score_baixo', 'teste_pendente', 'feedback_atrasado', 'reavaliacao_vencida');
 
@@ -67,8 +67,7 @@ CREATE TABLE vagas (
   requisitos TEXT,
   categoria TEXT,
   perfil_disc_ideal JSONB,
-  status status_vaga NOT NULL DEFAULT 'aberta',
-  publica BOOLEAN NOT NULL DEFAULT true,
+  status status_vaga NOT NULL DEFAULT 'rascunho',
   criado_por UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

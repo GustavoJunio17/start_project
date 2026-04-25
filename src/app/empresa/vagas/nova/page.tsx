@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -18,14 +17,13 @@ export default function NovaVagaPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    titulo: '', 
-    descricao: '', 
-    requisitos: '', 
-    categoria: '', 
-    publica: true,
-    perfil_disc_D: 25, 
-    perfil_disc_I: 25, 
-    perfil_disc_S: 25, 
+    titulo: '',
+    descricao: '',
+    requisitos: '',
+    categoria: '',
+    perfil_disc_D: 25,
+    perfil_disc_I: 25,
+    perfil_disc_S: 25,
     perfil_disc_C: 25,
   })
   const supabase = createClient()
@@ -45,15 +43,14 @@ export default function NovaVagaPage() {
         descricao: form.descricao,
         requisitos: form.requisitos,
         categoria: form.categoria,
-        publica: form.publica,
-        perfil_disc_ideal: { 
-          D: form.perfil_disc_D, 
-          I: form.perfil_disc_I, 
-          S: form.perfil_disc_S, 
-          C: form.perfil_disc_C 
+        perfil_disc_ideal: {
+          D: form.perfil_disc_D,
+          I: form.perfil_disc_I,
+          S: form.perfil_disc_S,
+          C: form.perfil_disc_C
         },
         criado_por: user.id,
-        status: 'aberta' // Nova vaga sempre começa aberta por padrão
+        status: 'rascunho'
       })
 
       if (error) throw error
@@ -74,7 +71,7 @@ export default function NovaVagaPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold text-foreground">Criar Nova Vaga</h1>
-          <p className="text-muted-foreground">Preencha os detalhes para publicar uma oportunidade</p>
+          <p className="text-muted-foreground">Preencha os detalhes para criar um rascunho da vaga</p>
         </div>
       </div>
 
@@ -128,17 +125,10 @@ export default function NovaVagaPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border border-border">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Vaga Pública</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Permite que candidatos externos encontrem esta vaga no portal
-                  </p>
-                </div>
-                <Switch 
-                  checked={form.publica}
-                  onCheckedChange={(checked) => setForm({...form, publica: checked})}
-                />
+              <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                <p className="text-sm text-blue-300">
+                  ℹ️ Esta vaga será criada como rascunho. Após revisar todos os detalhes, você poderá confirmar a vaga para torná-la visível aos candidatos.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -195,7 +185,7 @@ export default function NovaVagaPage() {
               Cancelar
             </Button>
             <Button type="submit" className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF] gap-2" disabled={saving}>
-              {saving ? 'Publicando...' : <><Save className="w-4 h-4"/> Criar e Publicar Vaga</>}
+              {saving ? 'Criando...' : <><Save className="w-4 h-4"/> Criar Rascunho</>}
             </Button>
           </div>
         </div>
