@@ -37,6 +37,9 @@ export default function VagasPage() {
   const [isEditMode, setIsEditMode] = useState(false)
   const [editForm, setEditForm] = useState({ titulo: '', descricao: '', requisitos: '', categoria: '' })
   const [isSaving, setIsSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [vagaToDelete, setVagaToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const loadVagas = async () => {
     if (!user?.empresa_id) return
@@ -62,14 +65,23 @@ export default function VagasPage() {
     setIsDetailsOpen(false)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja deletar este rascunho?')) return
-    const { error } = await supabase.from('vagas').delete().eq('id', id)
+  const handleDeleteClick = (id: string) => {
+    setVagaToDelete(id)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!vagaToDelete) return
+    setIsDeleting(true)
+    const { error } = await supabase.from('vagas').delete().eq('id', vagaToDelete)
     if (error) {
       toast.error('Erro ao deletar vaga')
+      setIsDeleting(false)
       return
     }
     toast.success('Vaga deletada com sucesso!')
+    setShowDeleteConfirm(false)
+    setVagaToDelete(null)
     loadVagas()
     setIsDetailsOpen(false)
   }
@@ -275,7 +287,7 @@ export default function VagasPage() {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => handleDelete(selectedVaga.id)}
+                          onClick={() => handleDeleteClick(selectedVaga.id)}
                         >
                           <Trash className="w-4 h-4 mr-2" /> Cancelar
                         </Button>
@@ -294,6 +306,37 @@ export default function VagasPage() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Deleção */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Deletar Rascunho</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja deletar este rascunho? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false)
+                setVagaToDelete(null)
+              }}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deletando...' : 'Deletar'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
