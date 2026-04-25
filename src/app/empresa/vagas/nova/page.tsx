@@ -30,13 +30,19 @@ export default function NovaVagaPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔵 Formulário submetido')
+    console.log('👤 User:', user)
+    console.log('📋 Form:', form)
+
     if (!user?.empresa_id) {
+      console.error('❌ Usuário não associado a empresa')
       toast.error('Usuário não está associado a uma empresa')
       return
     }
-    
+
     setSaving(true)
     try {
+      console.log('📤 Enviando para Supabase...')
       const { error } = await supabase.from('vagas').insert({
         empresa_id: user.empresa_id,
         titulo: form.titulo,
@@ -53,11 +59,28 @@ export default function NovaVagaPage() {
         status: 'rascunho'
       })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Erro Supabase:', error)
+        throw error
+      }
 
+      console.log('✅ Vaga criada com sucesso!')
       toast.success('Vaga criada com sucesso!')
-      router.push('/empresa/vagas')
+
+      // Limpar formulário
+      setForm({
+        titulo: '',
+        descricao: '',
+        requisitos: '',
+        categoria: '',
+        perfil_disc_D: 1,
+        perfil_disc_I: 1,
+        perfil_disc_S: 1,
+        perfil_disc_C: 1,
+      })
+      setSaving(false)
     } catch (error: any) {
+      console.error('❌ Erro completo:', error)
       toast.error('Erro ao criar vaga: ' + error.message)
       setSaving(false)
     }

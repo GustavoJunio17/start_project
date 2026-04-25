@@ -5,12 +5,13 @@ import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Pagination } from '@/components/ui/pagination'
 import type { Vaga, StatusVaga } from '@/types/database'
-import { Plus, Briefcase, CheckCircle } from 'lucide-react'
+import { Plus, Briefcase, CheckCircle, Edit, Trash, X } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
 const supabase = createClient()
 
@@ -28,6 +29,8 @@ export default function VagasPage() {
   const [vagas, setVagas] = useState<Vaga[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [selectedVaga, setSelectedVaga] = useState<Vaga | null>(null)
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
   const loadVagas = async () => {
     if (!user?.empresa_id) return
@@ -42,9 +45,27 @@ export default function VagasPage() {
 
   useEffect(() => { loadVagas() }, [user])
 
-  const handleStatusChange = async (id: string, status: StatusVaga) => {
-    await supabase.from('vagas').update({ status }).eq('id', id)
+  const handleConfirm = async (id: string) => {
+    const { error } = await supabase.from('vagas').update({ status: 'aberta' }).eq('id', id)
+    if (error) {
+      toast.error('Erro ao confirmar vaga')
+      return
+    }
+    toast.success('Vaga confirmada com sucesso!')
     loadVagas()
+    setIsDetailsOpen(false)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja deletar este rascunho?')) return
+    const { error } = await supabase.from('vagas').delete().eq('id', id)
+    if (error) {
+      toast.error('Erro ao deletar vaga')
+      return
+    }
+    toast.success('Vaga deletada com sucesso!')
+    loadVagas()
+    setIsDetailsOpen(false)
   }
 
   const totalPages = Math.ceil(vagas.length / ITEMS_PER_PAGE)
@@ -70,7 +91,14 @@ export default function VagasPage() {
         ) : vagas.length === 0 ? (
           <p className="text-muted-foreground col-span-full text-center py-8">Nenhuma vaga cadastrada ainda.</p>
         ) : paginated.map(vaga => (
-          <Card key={vaga.id} className="bg-card border-border">
+          <Card
+            key={vaga.id}
+            className="bg-card border-border cursor-pointer hover:border-[#00D4FF] transition-colors"
+            onClick={() => {
+              setSelectedVaga(vaga)
+              setIsDetailsOpen(true)
+            }}
+          >
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -81,24 +109,7 @@ export default function VagasPage() {
               </div>
               {vaga.categoria && <Badge variant="outline" className="mb-2 text-xs">{vaga.categoria}</Badge>}
               {vaga.descricao && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{vaga.descricao}</p>}
-              <div className="flex items-center justify-between mt-3">
-                {vaga.status === 'rascunho' ? (
-                  <span className="text-xs text-blue-400 flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" /> Confirmar
-                  </span>
-                ) : (
-                  <span className="text-xs text-green-400">Publicada</span>
-                )}
-                <Select value={vaga.status} onValueChange={v => handleStatusChange(vaga.id, v as StatusVaga)}>
-                  <SelectTrigger className="w-28 h-7 text-xs bg-background"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {vaga.status === 'rascunho' && <SelectItem value="aberta">Confirmar</SelectItem>}
-                    {vaga.status !== 'rascunho' && <SelectItem value="aberta">Aberta</SelectItem>}
-                    {vaga.status !== 'rascunho' && <SelectItem value="pausada">Pausada</SelectItem>}
-                    {vaga.status !== 'rascunho' && <SelectItem value="encerrada">Encerrada</SelectItem>}
-                  </SelectContent>
-                </Select>
-              </div>
+              <p className="text-xs text-muted-foreground">Clique para mais detalhes</p>
             </CardContent>
           </Card>
         ))}
@@ -110,6 +121,78 @@ export default function VagasPage() {
         itemsPerPage={ITEMS_PER_PAGE}
         onPageChange={setPage}
       />
+
+      {/* Modal de Detalhes */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selectedVaga?.titulo}</DialogTitle>
+            <DialogDescription>{selectedVaga?.categoria}</DialogDescription>
+          </DialogHeader>
+
+          {selectedVaga && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Descrição</h4>
+                <p className="text-sm text-muted-foreground">{selectedVaga.descricao || 'Sem descrição'}</p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Requisitos</h4>
+                <p className="text-sm text-muted-foreground">{selectedVaga.requisitos || 'Sem requisitos'}</p>
+              </div>
+
+              <div className="pt-4 border-t border-border">
+                <Badge className={STATUS_COLORS[selectedVaga.status]}>
+                  Status: {selectedVaga.status}
+                </Badge>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex gap-2 pt-4 border-t border-border">
+                {selectedVaga.status === 'rascunho' ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsDetailsOpen(false)
+                        // Redirecionar para editar
+                        window.location.href = `/empresa/vagas/editar/${selectedVaga.id}`
+                      }}
+                    >
+                      <Edit className="w-4 h-4 mr-2" /> Editar
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+                      onClick={() => handleConfirm(selectedVaga.id)}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" /> Confirmar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(selectedVaga.id)}
+                    >
+                      <Trash className="w-4 h-4 mr-2" /> Cancelar
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsDetailsOpen(false)}
+                  >
+                    <X className="w-4 h-4 mr-2" /> Fechar
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
