@@ -9,7 +9,10 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Pagination } from '@/components/ui/pagination'
 import type { Vaga, StatusVaga } from '@/types/database'
-import { Plus, Briefcase, CheckCircle, Edit, Trash, X } from 'lucide-react'
+import { Plus, Briefcase, CheckCircle, Edit, Trash, X, ArrowLeft } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -31,6 +34,9 @@ export default function VagasPage() {
   const [page, setPage] = useState(1)
   const [selectedVaga, setSelectedVaga] = useState<Vaga | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editForm, setEditForm] = useState({ titulo: '', descricao: '', requisitos: '', categoria: '' })
+  const [isSaving, setIsSaving] = useState(false)
 
   const loadVagas = async () => {
     if (!user?.empresa_id) return
@@ -64,6 +70,31 @@ export default function VagasPage() {
       return
     }
     toast.success('Vaga deletada com sucesso!')
+    loadVagas()
+    setIsDetailsOpen(false)
+  }
+
+  const handleEditClick = (vaga: Vaga) => {
+    setEditForm({
+      titulo: vaga.titulo,
+      descricao: vaga.descricao || '',
+      requisitos: vaga.requisitos || '',
+      categoria: vaga.categoria || '',
+    })
+    setIsEditMode(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedVaga) return
+    setIsSaving(true)
+    const { error } = await supabase.from('vagas').update(editForm).eq('id', selectedVaga.id)
+    if (error) {
+      toast.error('Erro ao salvar vaga')
+      setIsSaving(false)
+      return
+    }
+    toast.success('Vaga atualizada com sucesso!')
+    setIsEditMode(false)
     loadVagas()
     setIsDetailsOpen(false)
   }
@@ -126,69 +157,141 @@ export default function VagasPage() {
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedVaga?.titulo}</DialogTitle>
-            <DialogDescription>{selectedVaga?.categoria}</DialogDescription>
+            {isEditMode ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsEditMode(false)}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <DialogTitle>Editar Vaga</DialogTitle>
+              </div>
+            ) : (
+              <>
+                <DialogTitle>{selectedVaga?.titulo}</DialogTitle>
+                <DialogDescription>{selectedVaga?.categoria}</DialogDescription>
+              </>
+            )}
           </DialogHeader>
 
           {selectedVaga && (
             <div className="space-y-4">
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Descrição</h4>
-                <p className="text-sm text-muted-foreground">{selectedVaga.descricao || 'Sem descrição'}</p>
-              </div>
+              {isEditMode ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Input
+                      value={editForm.titulo}
+                      onChange={(e) => setEditForm({ ...editForm, titulo: e.target.value })}
+                      placeholder="Título da vaga"
+                    />
+                  </div>
 
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Requisitos</h4>
-                <p className="text-sm text-muted-foreground">{selectedVaga.requisitos || 'Sem requisitos'}</p>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Input
+                      value={editForm.categoria}
+                      onChange={(e) => setEditForm({ ...editForm, categoria: e.target.value })}
+                      placeholder="Categoria"
+                    />
+                  </div>
 
-              <div className="pt-4 border-t border-border">
-                <Badge className={STATUS_COLORS[selectedVaga.status]}>
-                  Status: {selectedVaga.status}
-                </Badge>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Descrição</Label>
+                    <Textarea
+                      value={editForm.descricao}
+                      onChange={(e) => setEditForm({ ...editForm, descricao: e.target.value })}
+                      placeholder="Descrição da vaga"
+                      className="min-h-[100px]"
+                    />
+                  </div>
 
-              {/* Botões de Ação */}
-              <div className="flex gap-2 pt-4 border-t border-border">
-                {selectedVaga.status === 'rascunho' ? (
-                  <>
+                  <div className="space-y-2">
+                    <Label>Requisitos</Label>
+                    <Textarea
+                      value={editForm.requisitos}
+                      onChange={(e) => setEditForm({ ...editForm, requisitos: e.target.value })}
+                      placeholder="Requisitos"
+                      className="min-h-[100px]"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-4 border-t border-border">
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setIsDetailsOpen(false)
-                        // Redirecionar para editar
-                        window.location.href = `/empresa/vagas/editar/${selectedVaga.id}`
-                      }}
+                      onClick={() => setIsEditMode(false)}
+                      disabled={isSaving}
                     >
-                      <Edit className="w-4 h-4 mr-2" /> Editar
+                      Cancelar
                     </Button>
                     <Button
-                      variant="default"
-                      size="sm"
                       className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
-                      onClick={() => handleConfirm(selectedVaga.id)}
+                      onClick={handleSaveEdit}
+                      disabled={isSaving}
                     >
-                      <CheckCircle className="w-4 h-4 mr-2" /> Confirmar
+                      {isSaving ? 'Salvando...' : 'Salvar'}
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(selectedVaga.id)}
-                    >
-                      <Trash className="w-4 h-4 mr-2" /> Cancelar
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsDetailsOpen(false)}
-                  >
-                    <X className="w-4 h-4 mr-2" /> Fechar
-                  </Button>
-                )}
-              </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Descrição</h4>
+                    <p className="text-sm text-muted-foreground">{selectedVaga.descricao || 'Sem descrição'}</p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Requisitos</h4>
+                    <p className="text-sm text-muted-foreground">{selectedVaga.requisitos || 'Sem requisitos'}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-border">
+                    <Badge className={STATUS_COLORS[selectedVaga.status]}>
+                      Status: {selectedVaga.status}
+                    </Badge>
+                  </div>
+
+                  {/* Botões de Ação */}
+                  <div className="flex gap-2 pt-4 border-t border-border">
+                    {selectedVaga.status === 'rascunho' ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditClick(selectedVaga)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" /> Editar
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+                          onClick={() => handleConfirm(selectedVaga.id)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" /> Confirmar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(selectedVaga.id)}
+                        >
+                          <Trash className="w-4 h-4 mr-2" /> Cancelar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsDetailsOpen(false)}
+                      >
+                        <X className="w-4 h-4 mr-2" /> Fechar
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
