@@ -21,10 +21,10 @@ export default function NovaVagaPage() {
     descricao: '',
     requisitos: '',
     categoria: '',
-    perfil_disc_D: 25,
-    perfil_disc_I: 25,
-    perfil_disc_S: 25,
-    perfil_disc_C: 25,
+    perfil_disc_D: 1,
+    perfil_disc_I: 1,
+    perfil_disc_S: 1,
+    perfil_disc_C: 1,
   })
   const supabase = createClient()
 
