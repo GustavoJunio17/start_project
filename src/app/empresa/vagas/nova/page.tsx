@@ -136,41 +136,41 @@ export default function NovaVagaPage() {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle>Perfil Comportamental Ideal (DISC)</CardTitle>
-              <CardDescription>Defina os pesos desejados para fit cultural da posição (A soma não precisa ser obrigatoriamente 100%)</CardDescription>
+              <CardDescription>Defina os pesos desejados para fit cultural da posição (valores numéricos)</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="space-y-2 p-4 bg-background border rounded-lg">
-                  <Label className="font-bold text-red-400">D - Dominância (%)</Label>
+                  <Label className="font-bold text-red-400">D - Dominância</Label>
                   <Input
-                    type="number" min={0} max={100}
+                    type="number" min={0}
                     value={form.perfil_disc_D}
                     onChange={e => setForm({ ...form, perfil_disc_D: Number(e.target.value) })}
                   />
                   <p className="text-xs text-muted-foreground">Foco em resultados e ação</p>
                 </div>
                 <div className="space-y-2 p-4 bg-background border rounded-lg">
-                  <Label className="font-bold text-yellow-400">I - Influência (%)</Label>
+                  <Label className="font-bold text-yellow-400">I - Influência</Label>
                   <Input
-                    type="number" min={0} max={100}
+                    type="number" min={0}
                     value={form.perfil_disc_I}
                     onChange={e => setForm({ ...form, perfil_disc_I: Number(e.target.value) })}
                   />
                   <p className="text-xs text-muted-foreground">Comunicação e persuasão</p>
                 </div>
                 <div className="space-y-2 p-4 bg-background border rounded-lg">
-                  <Label className="font-bold text-green-400">S - Estabilidade (%)</Label>
+                  <Label className="font-bold text-green-400">S - Estabilidade</Label>
                   <Input
-                    type="number" min={0} max={100}
+                    type="number" min={0}
                     value={form.perfil_disc_S}
                     onChange={e => setForm({ ...form, perfil_disc_S: Number(e.target.value) })}
                   />
                   <p className="text-xs text-muted-foreground">Paciência e previsibilidade</p>
                 </div>
                 <div className="space-y-2 p-4 bg-background border rounded-lg">
-                  <Label className="font-bold text-blue-400">C - Conformidade (%)</Label>
+                  <Label className="font-bold text-blue-400">C - Conformidade</Label>
                   <Input
-                    type="number" min={0} max={100}
+                    type="number" min={0}
                     value={form.perfil_disc_C}
                     onChange={e => setForm({ ...form, perfil_disc_C: Number(e.target.value) })}
                   />
