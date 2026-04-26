@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { TemplateTeste, QuestaoDisc } from '@/types/database'
-import { ArrowLeft, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Trash2, Save, Edit2, X } from 'lucide-react'
 
 const supabase = createClient()
 
@@ -25,6 +25,9 @@ export default function TemplateEditarPage() {
   const [saving, setSaving] = useState(false)
   const [nome, setNome] = useState('')
   const [descricao, setDescricao] = useState('')
+  const [questaoEditando, setQuestaoEditando] = useState<QuestaoDisc | null>(null)
+  const [perguntaEditando, setPerguntaEditando] = useState('')
+  const [opcoesEditando, setOpcoesEditando] = useState<{ texto: string; dimensao: 'D' | 'I' | 'S' | 'C' }[]>([])
 
   useEffect(() => {
     if (!user?.empresa_id || !templateId) return
@@ -94,6 +97,46 @@ export default function TemplateEditarPage() {
     } catch (error) {
       console.error('Erro ao remover questão:', error)
     }
+  }
+
+  const handleAbrirEditarQuestao = (questao: QuestaoDisc) => {
+    setQuestaoEditando(questao)
+    setPerguntaEditando(questao.pergunta)
+    setOpcoesEditando([...questao.opcoes])
+  }
+
+  const handleSalvarQuestao = async () => {
+    if (!questaoEditando) return
+
+    try {
+      await supabase
+        .from('questoes_disc')
+        .update({
+          pergunta: perguntaEditando,
+          opcoes: opcoesEditando,
+        })
+        .eq('id', questaoEditando.id)
+
+      const questoesAtualizadas = questoes.map((q) =>
+        q.id === questaoEditando.id
+          ? { ...q, pergunta: perguntaEditando, opcoes: opcoesEditando }
+          : q
+      )
+      setQuestoes(questoesAtualizadas)
+      setQuestaoEditando(null)
+    } catch (error) {
+      console.error('Erro ao salvar questão:', error)
+    }
+  }
+
+  const handleEditarOpcao = (idx: number, campo: string, valor: unknown) => {
+    const novasOpcoes = [...opcoesEditando]
+    if (campo === 'texto') {
+      novasOpcoes[idx].texto = valor as string
+    } else if (campo === 'dimensao') {
+      novasOpcoes[idx].dimensao = valor as 'D' | 'I' | 'S' | 'C'
+    }
+    setOpcoesEditando(novasOpcoes)
   }
 
   if (loading) {
@@ -228,13 +271,22 @@ export default function TemplateEditarPage() {
                         })}
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleRemoveQuestao(q.id)}
-                      className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 transition-opacity"
-                      title="Remover questão"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleAbrirEditarQuestao(q)}
+                        className="text-[#00D4FF] hover:text-[#00D4FF]/80 transition-colors"
+                        title="Editar questão"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRemoveQuestao(q.id)}
+                        className="text-destructive hover:text-destructive/80 transition-colors"
+                        title="Remover questão"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -242,6 +294,91 @@ export default function TemplateEditarPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de edição de questão */}
+      {questaoEditando && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="bg-card border-border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-lg">Editar Questão</CardTitle>
+              <button
+                onClick={() => setQuestaoEditando(null)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div>
+                <Label htmlFor="pergunta-edit" className="text-sm font-medium">
+                  Pergunta
+                </Label>
+                <Input
+                  id="pergunta-edit"
+                  value={perguntaEditando}
+                  onChange={(e) => setPerguntaEditando(e.target.value)}
+                  className="mt-2 bg-background border-border"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-3 block">Opções</Label>
+                <div className="space-y-3">
+                  {opcoesEditando.map((opcao, idx) => (
+                    <div key={idx} className="flex gap-3 items-start p-3 rounded bg-background border border-border">
+                      <div className="flex-1">
+                        <Label htmlFor={`opcao-texto-${idx}`} className="text-xs font-medium text-muted-foreground">
+                          Texto da opção {idx + 1}
+                        </Label>
+                        <Input
+                          id={`opcao-texto-${idx}`}
+                          value={opcao.texto}
+                          onChange={(e) => handleEditarOpcao(idx, 'texto', e.target.value)}
+                          className="mt-1 bg-card border-border"
+                          placeholder="Digite a opção"
+                        />
+                      </div>
+                      <div className="w-24">
+                        <Label htmlFor={`opcao-dimensao-${idx}`} className="text-xs font-medium text-muted-foreground">
+                          Dimensão
+                        </Label>
+                        <select
+                          id={`opcao-dimensao-${idx}`}
+                          value={opcao.dimensao}
+                          onChange={(e) =>
+                            handleEditarOpcao(idx, 'dimensao', e.target.value)
+                          }
+                          className="mt-1 w-full px-2 py-1 rounded bg-card border border-border text-foreground text-sm"
+                        >
+                          <option value="D">D</option>
+                          <option value="I">I</option>
+                          <option value="S">S</option>
+                          <option value="C">C</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setQuestaoEditando(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+                  onClick={handleSalvarQuestao}
+                >
+                  <Save className="w-4 h-4 mr-2" /> Salvar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
