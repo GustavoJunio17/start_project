@@ -189,7 +189,8 @@ export interface QuestaoDisc {
 
 export interface RespostaTeste {
   id: string
-  candidato_id: string
+  candidato_id: string | null
+  colaborador_id: string | null
   tipo: TipoTeste
   respostas: Record<string, unknown>
   resultado: Record<string, unknown> | null

@@ -16,17 +16,25 @@ const supabase = createClient()
 export default function EmpresaTestesPage() {
   const { user } = useAuth()
   const router = useRouter()
-  const [respostas, setRespostas] = useState<(RespostaTeste & { candidato?: { nome_completo: string } })[]>([])
+  const [respostasCandidatos, setRespostasCandidatos] = useState<(RespostaTeste & { candidato?: { nome_completo: string } })[]>([])
+  const [respostasColaboradores, setRespostasColaboradores] = useState<(RespostaTeste & { colaborador?: { nome: string } })[]>([])
   const [templates, setTemplates] = useState<TemplateTeste[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   async function load() {
     if (!user?.empresa_id) return
-    const [resRes, templRes] = await Promise.all([
+    const [resCandRes, resColRes, templRes] = await Promise.all([
       supabase
         .from('respostas_teste')
         .select('*, candidato:candidatos(nome_completo)')
+        .not('candidato_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100),
+      supabase
+        .from('respostas_teste')
+        .select('*, colaborador:colaboradores(nome)')
+        .not('colaborador_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(100),
       supabase
@@ -34,7 +42,8 @@ export default function EmpresaTestesPage() {
         .select('*')
         .eq('empresa_id', user.empresa_id),
     ])
-    setRespostas(resRes.data || [])
+    setRespostasCandidatos(resCandRes.data || [])
+    setRespostasColaboradores(resColRes.data || [])
     setTemplates(templRes.data || [])
     setLoading(false)
   }
@@ -56,11 +65,17 @@ export default function EmpresaTestesPage() {
         <ClipboardList className="w-6 h-6 text-[#00D4FF]" /> Gestão de Testes
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-card border-border">
           <CardContent className="pt-6">
-            <p className="text-3xl font-bold text-foreground">{respostas.length}</p>
-            <p className="text-sm text-muted-foreground mt-1">Testes realizados</p>
+            <p className="text-3xl font-bold text-foreground">{respostasCandidatos.length}</p>
+            <p className="text-sm text-muted-foreground mt-1">Testes de Candidatos</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardContent className="pt-6">
+            <p className="text-3xl font-bold text-foreground">{respostasColaboradores.length}</p>
+            <p className="text-sm text-muted-foreground mt-1">Testes de Colaboradores</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
@@ -71,49 +86,95 @@ export default function EmpresaTestesPage() {
         </Card>
       </div>
 
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-sm">Resultados Recentes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border">
-                <TableHead>Candidato</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Score</TableHead>
-                <TableHead>Duração</TableHead>
-                <TableHead>Data</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">Carregando...</TableCell>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-sm">Resultados - Candidatos</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Score</TableHead>
+                  <TableHead>Duração</TableHead>
+                  <TableHead>Data</TableHead>
                 </TableRow>
-              ) : respostas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                    Nenhum resultado ainda.
-                  </TableCell>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">Carregando...</TableCell>
+                  </TableRow>
+                ) : respostasCandidatos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Nenhum resultado ainda.
+                    </TableCell>
+                  </TableRow>
+                ) : respostasCandidatos.map((r) => (
+                  <TableRow key={r.id} className="border-border">
+                    <TableCell className="font-medium">{(r.candidato as { nome_completo: string } | undefined)?.nome_completo || '-'}</TableCell>
+                    <TableCell><Badge variant="outline">{r.tipo.toUpperCase()}</Badge></TableCell>
+                    <TableCell className="font-medium">{r.score ?? '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.duracao_segundos ? `${Math.floor(r.duracao_segundos / 60)}min` : '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-sm">Resultados - Colaboradores</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Score</TableHead>
+                  <TableHead>Duração</TableHead>
+                  <TableHead>Data</TableHead>
                 </TableRow>
-              ) : respostas.map((r) => (
-                <TableRow key={r.id} className="border-border">
-                  <TableCell className="font-medium">{(r.candidato as { nome_completo: string } | undefined)?.nome_completo || '-'}</TableCell>
-                  <TableCell><Badge variant="outline">{r.tipo.toUpperCase()}</Badge></TableCell>
-                  <TableCell className="font-medium">{r.score ?? '-'}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.duracao_segundos ? `${Math.floor(r.duracao_segundos / 60)}min` : '-'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {new Date(r.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">Carregando...</TableCell>
+                  </TableRow>
+                ) : respostasColaboradores.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      Nenhum resultado ainda.
+                    </TableCell>
+                  </TableRow>
+                ) : respostasColaboradores.map((r) => (
+                  <TableRow key={r.id} className="border-border">
+                    <TableCell className="font-medium">{(r.colaborador as { nome: string } | undefined)?.nome || '-'}</TableCell>
+                    <TableCell><Badge variant="outline">{r.tipo.toUpperCase()}</Badge></TableCell>
+                    <TableCell className="font-medium">{r.score ?? '-'}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {r.duracao_segundos ? `${Math.floor(r.duracao_segundos / 60)}min` : '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {new Date(r.created_at).toLocaleDateString('pt-BR')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="bg-card border-border">
         <CardHeader>
