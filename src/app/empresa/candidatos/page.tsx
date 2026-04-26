@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Download, X, Plus } from 'lucide-react'
+import { Search, Download, X, Plus, CheckCircle } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 
 const ITEMS_PER_PAGE = 20
 
@@ -29,6 +30,17 @@ export default function CandidatosPage() {
   const [candidaturaForTest, setCandidaturaForTest] = useState<any>(null)
   const [testLink, setTestLink] = useState('')
   const [showTestLink, setShowTestLink] = useState(false)
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
+  const [candidaturaForApproval, setCandidaturaForApproval] = useState<any>(null)
+  const [formData, setFormData] = useState({
+    data_contratacao: new Date().toISOString().split('T')[0],
+    departamento: '',
+    cargo: '',
+    modelo_trabalho: 'presencial',
+    regime_contrato: 'CLT',
+    salario: '',
+  })
+  const [approvingId, setApprovingId] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
@@ -66,6 +78,57 @@ export default function CandidatosPage() {
     a.download = `curriculo-${nome}`
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const handleOpenApprovalModal = (c: any) => {
+    setCandidaturaForApproval(c)
+    setFormData({
+      data_contratacao: new Date().toISOString().split('T')[0],
+      departamento: c.vaga_departamento || '',
+      cargo: c.vaga_titulo || '',
+      modelo_trabalho: 'presencial',
+      regime_contrato: 'CLT',
+      salario: c.vaga_salario ? String(c.vaga_salario) : '',
+    })
+    setIsApprovalModalOpen(true)
+  }
+
+  const handleApproveCandidate = async () => {
+    if (!candidaturaForApproval) return
+
+    setApprovingId(candidaturaForApproval.id)
+    try {
+      const res = await fetch('/api/candidatos/aprovar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidatura_id: candidaturaForApproval.id,
+          candidato_id: candidaturaForApproval.candidato_id,
+          nome: candidaturaForApproval.nome,
+          email: candidaturaForApproval.email,
+          ...formData,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setCandidaturas(prev =>
+          prev.map(c =>
+            c.id === candidaturaForApproval.id ? { ...c, status: 'contratado' } : c
+          )
+        )
+        setIsApprovalModalOpen(false)
+        alert('✅ Candidato aprovado e cadastrado como colaborador!')
+      } else {
+        const error = await res.json()
+        alert(`❌ Erro: ${error.error}`)
+      }
+    } catch (error) {
+      console.error('Erro ao aprovar:', error)
+      alert('Erro ao aprovar candidato')
+    } finally {
+      setApprovingId(null)
+    }
   }
 
   const statusLabels: Record<string, string> = {
@@ -187,20 +250,38 @@ export default function CandidatosPage() {
                   >
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1.5 text-xs text-[#00D4FF] hover:text-[#00D4FF]"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setCandidaturaForTest(c)
-                        setIsTestModalOpen(true)
-                      }}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Teste
-                    </Button>
+                  <TableCell className="text-right flex gap-2 justify-end">
+                    {c.status === 'contratado' ? (
+                      <span className="text-xs text-green-400 font-semibold">Contratado</span>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs text-green-400 hover:text-green-300"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenApprovalModal(c)
+                          }}
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Aprovar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs text-[#00D4FF] hover:text-[#00D4FF]"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCandidaturaForTest(c)
+                            setIsTestModalOpen(true)
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Teste
+                        </Button>
+                      </>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -448,6 +529,153 @@ export default function CandidatosPage() {
             >
               Fechar
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Aprovação e Cadastro como Colaborador */}
+      <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              Aprovar e Cadastrar Colaborador
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Dados do Candidato */}
+            <div className="bg-secondary/40 rounded-lg p-4 border border-border">
+              <p className="text-xs text-muted-foreground font-semibold mb-3">Dados do Candidato</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Nome:</span>
+                  <p className="font-semibold text-foreground">{candidaturaForApproval?.nome}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Email:</span>
+                  <p className="font-semibold text-foreground">{candidaturaForApproval?.email}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Vaga:</span>
+                  <p className="font-semibold text-foreground">{candidaturaForApproval?.vaga_titulo}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Candidatura em:</span>
+                  <p className="font-semibold text-foreground">
+                    {new Date(candidaturaForApproval?.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Formulário de Colaborador */}
+            <div className="space-y-4">
+              <p className="text-sm font-semibold text-foreground">Dados de Contratação</p>
+
+              <div>
+                <Label htmlFor="data_contratacao" className="text-xs font-semibold">Data de Contratação</Label>
+                <Input
+                  id="data_contratacao"
+                  type="date"
+                  value={formData.data_contratacao}
+                  onChange={(e) => setFormData({ ...formData, data_contratacao: e.target.value })}
+                  className="mt-1 bg-card border-border"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="cargo" className="text-xs font-semibold">Cargo</Label>
+                  <Input
+                    id="cargo"
+                    value={formData.cargo}
+                    onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
+                    className="mt-1 bg-card border-border"
+                    placeholder="ex: Engenheiro de Software"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="departamento" className="text-xs font-semibold">Departamento</Label>
+                  <Input
+                    id="departamento"
+                    value={formData.departamento}
+                    onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
+                    className="mt-1 bg-card border-border"
+                    placeholder="ex: Tecnologia"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="modelo_trabalho" className="text-xs font-semibold">Modelo de Trabalho</Label>
+                  <select
+                    id="modelo_trabalho"
+                    value={formData.modelo_trabalho}
+                    onChange={(e) => setFormData({ ...formData, modelo_trabalho: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
+                  >
+                    <option value="presencial">Presencial</option>
+                    <option value="remoto">Remoto</option>
+                    <option value="hibrido">Híbrido</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label htmlFor="regime_contrato" className="text-xs font-semibold">Regime de Contrato</Label>
+                  <select
+                    id="regime_contrato"
+                    value={formData.regime_contrato}
+                    onChange={(e) => setFormData({ ...formData, regime_contrato: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
+                  >
+                    <option value="CLT">CLT</option>
+                    <option value="PJ">PJ</option>
+                    <option value="Estagio">Estágio</option>
+                    <option value="Freelance">Freelance</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="salario" className="text-xs font-semibold">Salário (opcional)</Label>
+                <Input
+                  id="salario"
+                  type="number"
+                  step="0.01"
+                  value={formData.salario}
+                  onChange={(e) => setFormData({ ...formData, salario: e.target.value })}
+                  className="mt-1 bg-card border-border"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-2 justify-end pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                onClick={() => setIsApprovalModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90"
+                disabled={approvingId !== null}
+                onClick={handleApproveCandidate}
+              >
+                {approvingId === candidaturaForApproval?.id ? (
+                  <>Aprovando...</>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Aprovar e Cadastrar
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
