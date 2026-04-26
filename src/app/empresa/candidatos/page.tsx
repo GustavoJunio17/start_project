@@ -535,144 +535,191 @@ export default function CandidatosPage() {
 
       {/* Modal de Aprovação e Cadastro como Colaborador */}
       <Dialog open={isApprovalModalOpen} onOpenChange={setIsApprovalModalOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-400" />
+            <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+              <div className="bg-green-500/20 p-2 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-400" />
+              </div>
               Aprovar e Cadastrar Colaborador
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
-            {/* Dados do Candidato */}
-            <div className="bg-secondary/40 rounded-lg p-4 border border-border">
-              <p className="text-xs text-muted-foreground font-semibold mb-3">Dados do Candidato</p>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="space-y-6 py-6">
+            {/* SEÇÃO 1: Informações do Candidato */}
+            <div>
+              <h3 className="text-sm font-bold text-[#00D4FF] mb-4 uppercase tracking-wide">
+                Informações do Candidato
+              </h3>
+              <div className="grid grid-cols-3 gap-4 bg-card border border-border rounded-xl p-5">
                 <div>
-                  <span className="text-muted-foreground">Nome:</span>
-                  <p className="font-semibold text-foreground">{candidaturaForApproval?.nome}</p>
+                  <p className="text-xs text-muted-foreground font-semibold mb-1">Nome Completo</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {candidaturaForApproval?.nome}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-semibold text-foreground">{candidaturaForApproval?.email}</p>
+                  <p className="text-xs text-muted-foreground font-semibold mb-1">Email</p>
+                  <p className="text-sm font-semibold text-foreground break-all">
+                    {candidaturaForApproval?.email}
+                  </p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Vaga:</span>
-                  <p className="font-semibold text-foreground">{candidaturaForApproval?.vaga_titulo}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Candidatura em:</span>
-                  <p className="font-semibold text-foreground">
+                  <p className="text-xs text-muted-foreground font-semibold mb-1">Data da Candidatura</p>
+                  <p className="text-sm font-semibold text-foreground">
                     {new Date(candidaturaForApproval?.created_at).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Formulário de Colaborador */}
-            <div className="space-y-4">
-              <p className="text-sm font-semibold text-foreground">Dados de Contratação</p>
-
-              <div>
-                <Label htmlFor="data_contratacao" className="text-xs font-semibold">Data de Contratação</Label>
-                <Input
-                  id="data_contratacao"
-                  type="date"
-                  value={formData.data_contratacao}
-                  onChange={(e) => setFormData({ ...formData, data_contratacao: e.target.value })}
-                  className="mt-1 bg-card border-border"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="cargo" className="text-xs font-semibold">Cargo</Label>
-                  <Input
-                    id="cargo"
-                    value={formData.cargo}
-                    onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                    className="mt-1 bg-card border-border"
-                    placeholder="ex: Engenheiro de Software"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="departamento" className="text-xs font-semibold">Departamento</Label>
-                  <Input
-                    id="departamento"
-                    value={formData.departamento}
-                    onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
-                    className="mt-1 bg-card border-border"
-                    placeholder="ex: Tecnologia"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="modelo_trabalho" className="text-xs font-semibold">Modelo de Trabalho</Label>
-                  <select
-                    id="modelo_trabalho"
-                    value={formData.modelo_trabalho}
-                    onChange={(e) => setFormData({ ...formData, modelo_trabalho: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
-                  >
-                    <option value="presencial">Presencial</option>
-                    <option value="remoto">Remoto</option>
-                    <option value="hibrido">Híbrido</option>
-                  </select>
-                </div>
-
-                <div>
-                  <Label htmlFor="regime_contrato" className="text-xs font-semibold">Regime de Contrato</Label>
-                  <select
-                    id="regime_contrato"
-                    value={formData.regime_contrato}
-                    onChange={(e) => setFormData({ ...formData, regime_contrato: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
-                  >
-                    <option value="CLT">CLT</option>
-                    <option value="PJ">PJ</option>
-                    <option value="Estagio">Estágio</option>
-                    <option value="Freelance">Freelance</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="salario" className="text-xs font-semibold">Salário (opcional)</Label>
-                <Input
-                  id="salario"
-                  type="number"
-                  step="0.01"
-                  value={formData.salario}
-                  onChange={(e) => setFormData({ ...formData, salario: e.target.value })}
-                  className="mt-1 bg-card border-border"
-                  placeholder="0.00"
-                />
+            {/* SEÇÃO 2: Vaga e Posição */}
+            <div>
+              <h3 className="text-sm font-bold text-[#00D4FF] mb-4 uppercase tracking-wide">
+                Vaga Referente
+              </h3>
+              <div className="bg-card border border-border rounded-xl p-5">
+                <p className="text-xs text-muted-foreground font-semibold mb-1">Posição</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {candidaturaForApproval?.vaga_titulo}
+                </p>
               </div>
             </div>
 
-            {/* Botões */}
-            <div className="flex gap-2 justify-end pt-4 border-t border-border">
+            {/* SEÇÃO 3: Dados de Contratação */}
+            <div>
+              <h3 className="text-sm font-bold text-[#00D4FF] mb-4 uppercase tracking-wide">
+                Dados de Contratação
+              </h3>
+              <div className="space-y-4">
+                {/* Data de Contratação */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <Label htmlFor="data_contratacao" className="text-xs font-semibold mb-2 block">
+                      Data de Contratação
+                    </Label>
+                    <Input
+                      id="data_contratacao"
+                      type="date"
+                      value={formData.data_contratacao}
+                      onChange={(e) => setFormData({ ...formData, data_contratacao: e.target.value })}
+                      className="bg-card border-border"
+                    />
+                  </div>
+                </div>
+
+                {/* Cargo e Departamento */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="cargo" className="text-xs font-semibold mb-2 block">
+                      Cargo
+                    </Label>
+                    <Input
+                      id="cargo"
+                      value={formData.cargo}
+                      onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
+                      className="bg-card border-border"
+                      placeholder="ex: Engenheiro de Software"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="departamento" className="text-xs font-semibold mb-2 block">
+                      Departamento
+                    </Label>
+                    <Input
+                      id="departamento"
+                      value={formData.departamento}
+                      onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
+                      className="bg-card border-border"
+                      placeholder="ex: Tecnologia"
+                    />
+                  </div>
+                </div>
+
+                {/* Modelo de Trabalho e Regime de Contrato */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="modelo_trabalho" className="text-xs font-semibold mb-2 block">
+                      Modelo de Trabalho
+                    </Label>
+                    <select
+                      id="modelo_trabalho"
+                      value={formData.modelo_trabalho}
+                      onChange={(e) => setFormData({ ...formData, modelo_trabalho: e.target.value })}
+                      className="w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
+                    >
+                      <option value="presencial">🏢 Presencial</option>
+                      <option value="remoto">🏠 Remoto</option>
+                      <option value="hibrido">🔄 Híbrido</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="regime_contrato" className="text-xs font-semibold mb-2 block">
+                      Regime de Contrato
+                    </Label>
+                    <select
+                      id="regime_contrato"
+                      value={formData.regime_contrato}
+                      onChange={(e) => setFormData({ ...formData, regime_contrato: e.target.value })}
+                      className="w-full px-3 py-2 rounded bg-card border border-border text-foreground text-sm"
+                    >
+                      <option value="CLT">CLT</option>
+                      <option value="PJ">PJ</option>
+                      <option value="Estagio">Estágio</option>
+                      <option value="Freelance">Freelance</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Salário */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <Label htmlFor="salario" className="text-xs font-semibold mb-2 block">
+                      Salário (opcional)
+                    </Label>
+                    <div className="flex items-center">
+                      <span className="text-sm text-muted-foreground mr-2">R$</span>
+                      <Input
+                        id="salario"
+                        type="number"
+                        step="0.01"
+                        value={formData.salario}
+                        onChange={(e) => setFormData({ ...formData, salario: e.target.value })}
+                        className="bg-card border-border"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SEÇÃO 4: Botões de Ação */}
+            <div className="flex gap-3 justify-end pt-6 border-t border-border">
               <Button
                 variant="outline"
+                size="lg"
                 onClick={() => setIsApprovalModalOpen(false)}
+                className="px-6"
               >
                 Cancelar
               </Button>
               <Button
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90"
+                size="lg"
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90 px-8"
                 disabled={approvingId !== null}
                 onClick={handleApproveCandidate}
               >
                 {approvingId === candidaturaForApproval?.id ? (
-                  <>Aprovando...</>
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin">⏳</div>
+                    Processando...
+                  </span>
                 ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
                     Aprovar e Cadastrar
-                  </>
+                  </span>
                 )}
               </Button>
             </div>
