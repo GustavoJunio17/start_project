@@ -104,64 +104,11 @@ async function handlePOST(req: NextRequest) {
   }
 
   // ==========================================
-  // CRIAR EMPRESA
-  // ==========================================
-
-  const empresaQuery = `
-    INSERT INTO empresas (
-      nome,
-      segmento,
-      cnpj,
-      email_contato,
-      telefone,
-      plano,
-      criado_por
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING *
-  `
-
-  let empresaResult
-  try {
-    empresaResult = await pool.query(empresaQuery, [
-      nome,
-      area_atuacao,
-      cnpjLimpo,
-      email_contato || null,
-      telefone || null,
-      plano,
-      user.id,
-    ])
-  } catch (error) {
-    console.error('Erro ao criar empresa:', error)
-    return errorResponse(mensagensErro.empresa_nao_criada, 500)
-  }
-
-  const empresa = empresaResult.rows[0]
-
-  // ==========================================
-  // CRIAR USUÁRIO ADMIN DA EMPRESA
+  // CRIAR EMPRESA + ADMIN (transação atômica)
   // ==========================================
 
   const senhaHash = await bcrypt.hash(senha_admin, 10)
 
-  const usuarioQuery = `
-    INSERT INTO users (
-      email,
-      password_hash,
-      nome_completo,
-      role,
-      empresa_id,
-      empresa_nome,
-      permissoes,
-      ativo,
-      criado_por
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING id, email, nome_completo, role, empresa_id
-  `
-
-  // Permissões padrão para admin
   const permissoesAdmin = {
     vagas: { ver: true, criar: true, editar: true, excluir: true, convidar: false },
     candidatos: { ver: true, criar: true, editar: true, excluir: true, convidar: false },
@@ -172,27 +119,46 @@ async function handlePOST(req: NextRequest) {
     relatorios: { ver: true, criar: true, editar: false, excluir: false, convidar: false },
   }
 
-  let usuarioResult
-  try {
-    usuarioResult = await pool.query(usuarioQuery, [
-      email_admin,
-      senhaHash,
-      nome || email_admin.split('@')[0],
-      'admin',
-      empresa.id,
-      nome,
-      JSON.stringify(permissoesAdmin),
-      true,
-      user.id,
-    ])
-  } catch (error) {
-    console.error('Erro ao criar usuário admin:', error)
-    // Tentar deletar a empresa criada
-    await pool.query('DELETE FROM empresas WHERE id = $1', [empresa.id])
-    return errorResponse(mensagensErro.usuario_nao_criado, 500)
-  }
+  const client = await pool.connect()
+  let empresa: Record<string, unknown>
+  let usuarioAdmin: Record<string, unknown>
 
-  const usuarioAdmin = usuarioResult.rows[0]
+  try {
+    await client.query('BEGIN')
+
+    const { rows: empresaRows } = await client.query(
+      `INSERT INTO empresas (nome, segmento, cnpj, email_contato, telefone, plano, criado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [nome, area_atuacao, cnpjLimpo, email_contato || null, telefone || null, plano, user.id],
+    )
+    empresa = empresaRows[0]
+
+    const { rows: usuarioRows } = await client.query(
+      `INSERT INTO users (email, password_hash, nome_completo, role, empresa_id, empresa_nome, permissoes, ativo, criado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, email, nome_completo, role, empresa_id`,
+      [
+        email_admin,
+        senhaHash,
+        nome || email_admin.split('@')[0],
+        'user_empresa',
+        empresa.id,
+        nome,
+        JSON.stringify(permissoesAdmin),
+        true,
+        user.id,
+      ],
+    )
+    usuarioAdmin = usuarioRows[0]
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('Erro ao criar empresa + admin:', error)
+    return errorResponse(mensagensErro.empresa_nao_criada, 500)
+  } finally {
+    client.release()
+  }
 
   // ==========================================
   // RESPOSTA

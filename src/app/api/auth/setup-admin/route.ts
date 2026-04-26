@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Todos os campos sao obrigatorios' }, { status: 400 })
     }
 
-    if (!['super_admin', 'super_gestor', 'admin'].includes(role)) {
+    if (!['super_admin', 'super_gestor', 'user_empresa'].includes(role)) {
       return NextResponse.json({ error: 'Role invalida. Apenas super_admin, super_gestor e admin' }, { status: 400 })
     }
 

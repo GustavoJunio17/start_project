@@ -24,8 +24,8 @@ const SEGMENTOS = [
 ]
 
 export function FilterPanel({ filters, onFiltersChange, activeFiltersCount }: FilterPanelProps) {
-  const handleChange = (key: keyof Filters, value: string) => {
-    onFiltersChange({ ...filters, [key]: value })
+  const handleChange = (key: keyof Filters, value: string | null) => {
+    onFiltersChange({ ...filters, [key]: value ?? '' })
   }
 
   return (

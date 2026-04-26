@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * Debounce hook para otimizar buscas em tempo real
@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef } from 'react'
  * @param delay - Delay em ms (padrão 300)
  */
 export function useDebounce<T extends (...args: any[]) => void>(callback: T, delay: number = 300) {
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const debouncedCallback = useCallback(
     (...args: Parameters<T>) => {
@@ -28,9 +28,7 @@ export function useDebounce<T extends (...args: any[]) => void>(callback: T, del
  * Hook para gerenciar seleção em massa
  */
 export function useMultiSelect(initialSelected: Set<string> = new Set()) {
-  const [selected, setSelected] = function useState(initialSelected: Set<string>): [Set<string>, Function] {
-    return [initialSelected, () => {}]
-  }
+  const [selected, setSelected] = useState<Set<string>>(initialSelected)
 
   const toggleOne = useCallback((id: string) => {
     setSelected((prev: Set<string>) => {
@@ -67,9 +65,7 @@ export function useMultiSelect(initialSelected: Set<string> = new Set()) {
  * Hook para persistir estado em localStorage
  */
 export function useLocalStorage<T>(key: string, initialValue: T) {
-  const [storedValue, setStoredValue] = function useState(initialValue: T): [T, Function] {
-    return [initialValue, () => {}]
-  }
+  const [storedValue, setStoredValue] = useState<T>(initialValue)
 
   const setValue = useCallback(
     (value: T | ((val: T) => T)) => {
@@ -131,9 +127,7 @@ export function useAdvancedFilters<T extends Record<string, any>>(
  * Hook para lazy loading de imagens
  */
 export function useLazyImage(src: string) {
-  const [isLoaded, setIsLoaded] = function useState(false): [boolean, Function] {
-    return [false, () => {}]
-  }
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => {
@@ -157,9 +151,7 @@ export function useLazyImage(src: string) {
  * Hook para paginar dados
  */
 export function usePagination<T>(items: T[], itemsPerPage: number = 10) {
-  const [currentPage, setCurrentPage] = function useState(1): [number, Function] {
-    return [1, () => {}]
-  }
+  const [currentPage, setCurrentPage] = useState(1)
 
   const totalPages = Math.ceil(items.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -213,7 +205,7 @@ export function useKeyboardShortcut(key: string, callback: () => void, ctrlKey?:
  * Hook para comparar valores anteriores
  */
 export function usePreviousValue<T>(value: T): T | undefined {
-  const ref = useRef<T>()
+  const ref = useRef<T | undefined>(undefined)
 
   useEffect(() => {
     ref.current = value

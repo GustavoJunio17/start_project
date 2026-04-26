@@ -11,6 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash, Plus, Search, Building2 } from "lucide-react"
 import type { Colaborador, Empresa } from "@/types/database"
 import { FormColaborador } from "./FormColaborador"
+import { Pagination } from "@/components/ui/pagination"
+
+const ITEMS_PER_PAGE = 20
 
 export function ListarColaboradores() {
   const [colaboradores, setColaboradores] = useState<(Colaborador & { empresa: { nome: string } })[]>([])
@@ -23,6 +26,7 @@ export function ListarColaboradores() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [colabToEdit, setColabToEdit] = useState<Colaborador | null>(null)
+  const [page, setPage] = useState(1)
 
   const fetchData = async () => {
     setLoading(true)
@@ -60,6 +64,11 @@ export function ListarColaboradores() {
     return matchesSearch && matchesStatus && matchesEmpresa
   })
 
+  const totalPages = Math.ceil(filteredColabs.length / ITEMS_PER_PAGE)
+  const paginatedColabs = filteredColabs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  useEffect(() => setPage(1), [search, statusFilter, empresaFilter])
+
   const getStatusBadgeColor = (status: string) => {
     switch(status) {
       case 'ativo': return 'bg-green-500 hover:bg-green-600'
@@ -92,7 +101,7 @@ export function ListarColaboradores() {
         </div>
         
         <div className="flex flex-wrap gap-2 items-center w-full xl:w-auto">
-          <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+          <Select value={empresaFilter} onValueChange={(v) => v !== null && setEmpresaFilter(v)}>
             <SelectTrigger className="w-[200px]">
               <span className="truncate">
                 {empresaFilter === 'todas' 
@@ -110,7 +119,7 @@ export function ListarColaboradores() {
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => v !== null && setStatusFilter(v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -154,7 +163,7 @@ export function ListarColaboradores() {
                   Nenhum colaborador encontrado.
                 </TableCell>
               </TableRow>
-            ) : filteredColabs.map(colab => (
+            ) : paginatedColabs.map(colab => (
               <TableRow key={colab.id}>
                 <TableCell>
                   <div className="font-medium">{colab.nome}</div>
@@ -179,10 +188,8 @@ export function ListarColaboradores() {
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                      <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => { setColabToEdit(colab); setIsFormOpen(true); }}>
@@ -198,6 +205,13 @@ export function ListarColaboradores() {
             ))}
           </TableBody>
         </Table>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filteredColabs.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </div>
 
       {isFormOpen && (

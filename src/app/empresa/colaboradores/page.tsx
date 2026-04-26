@@ -3,17 +3,21 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { DISCBars } from '@/components/disc/DISCChart'
+import { Pagination } from '@/components/ui/pagination'
+import { FormColaborador } from '@/components/admin/colaboradores/FormColaborador'
 import type { Colaborador, StatusColaborador } from '@/types/database'
-import { Search, Plus, Upload } from 'lucide-react'
+import { Search, Plus, Upload, MoreHorizontal, Edit, Trash } from 'lucide-react'
+
+const supabase = createClient()
+
+const ITEMS_PER_PAGE = 20
 
 const STATUS_COLORS: Record<StatusColaborador, string> = {
   em_treinamento: 'bg-blue-500/20 text-blue-400',
@@ -21,20 +25,26 @@ const STATUS_COLORS: Record<StatusColaborador, string> = {
   desligado: 'bg-red-500/20 text-red-400',
 }
 
+const STATUS_LABELS: Record<StatusColaborador, string> = {
+  em_treinamento: 'Em Treinamento',
+  ativo: 'Ativo',
+  desligado: 'Desligado',
+}
+
 export default function ColaboradoresPage() {
   const { user } = useAuth()
   const [colaboradores, setColaboradores] = useState<Colaborador[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('todos')
-  const [origemFilter, setOrigemFilter] = useState<string>('todos')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ nome: '', cargo: '', email: '' })
-  const supabase = createClient()
+  const [statusFilter, setStatusFilter] = useState('todos')
+  const [origemFilter, setOrigemFilter] = useState('todos')
+  const [page, setPage] = useState(1)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [colabToEdit, setColabToEdit] = useState<Colaborador | null>(null)
 
-  const loadColaboradores = async () => {
+  const fetchData = async () => {
     if (!user?.empresa_id) return
+    setLoading(true)
     const { data } = await supabase
       .from('colaboradores')
       .select('*')
@@ -44,42 +54,26 @@ export default function ColaboradoresPage() {
     setLoading(false)
   }
 
-  useEffect(() => { loadColaboradores() }, [user])
+  useEffect(() => { fetchData() }, [user?.empresa_id])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user?.empresa_id) return
-    setSaving(true)
-    await supabase.from('colaboradores').insert({
-      empresa_id: user.empresa_id,
-      nome: form.nome,
-      cargo: form.cargo,
-      email: form.email,
-      data_contratacao: new Date().toISOString().split('T')[0],
-      origem: 'contratacao_direta',
-      proxima_reavaliacao: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    })
-    setSaving(false)
-    setDialogOpen(false)
-    setForm({ nome: '', cargo: '', email: '' })
-    loadColaboradores()
+  const handleDelete = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este colaborador?')) return
+    await supabase.from('colaboradores').delete().eq('id', id)
+    fetchData()
   }
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user?.empresa_id) return
-
     const text = await file.text()
     const lines = text.split('\n').filter(l => l.trim())
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-
     const rows = lines.slice(1).map(line => {
       const values = line.split(',').map(v => v.trim())
       const row: Record<string, string> = {}
       headers.forEach((h, i) => { row[h] = values[i] || '' })
       return row
     })
-
     for (const row of rows) {
       await supabase.from('colaboradores').insert({
         empresa_id: user.empresa_id,
@@ -91,17 +85,23 @@ export default function ColaboradoresPage() {
         proxima_reavaliacao: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       })
     }
-    loadColaboradores()
+    fetchData()
   }
 
   const filtered = colaboradores.filter(c => {
-    const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch = c.nome.toLowerCase().includes(search.toLowerCase()) ||
                           c.cargo?.toLowerCase().includes(search.toLowerCase())
     const matchesStatus = statusFilter === 'todos' || c.status === statusFilter
     const matchesOrigem = origemFilter === 'todos' || c.origem === origemFilter
-    
     return matchesSearch && matchesStatus && matchesOrigem
   })
+
+  useEffect(() => setPage(1), [search, statusFilter, origemFilter])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  const empresaAtual = user ? [{ id: user.empresa_id!, nome: user.empresa_nome! }] : []
 
   return (
     <div className="space-y-6">
@@ -117,42 +117,27 @@ export default function ColaboradoresPage() {
               <Upload className="w-4 h-4 mr-2" /> Importar CSV
             </Button>
           </label>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger render={<Button className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" />}>
-              <Plus className="w-4 h-4 mr-2" /> Novo
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader><DialogTitle>Cadastrar Colaborador</DialogTitle></DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nome</Label>
-                  <Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} required className="bg-background" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cargo</Label>
-                  <Input value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} className="bg-background" />
-                </div>
-                <div className="space-y-2">
-                  <Label>E-mail</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="bg-background" />
-                </div>
-                <Button type="submit" className="w-full bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" disabled={saving}>
-                  {saving ? 'Salvando...' : 'Cadastrar'}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button
+            className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+            onClick={() => { setColabToEdit(null); setIsFormOpen(true) }}
+          >
+            <Plus className="w-4 h-4 mr-2" /> Novo
+          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por nome ou cargo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
+          <Input
+            placeholder="Buscar por nome ou cargo..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-10 bg-card border-border"
+          />
         </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[200px] bg-card border-border">
+        <Select value={statusFilter} onValueChange={v => v && setStatusFilter(v)}>
+          <SelectTrigger className="w-[180px] bg-card border-border">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -162,8 +147,7 @@ export default function ColaboradoresPage() {
             <SelectItem value="desligado">Desligado</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select value={origemFilter} onValueChange={setOrigemFilter}>
+        <Select value={origemFilter} onValueChange={v => v && setOrigemFilter(v)}>
           <SelectTrigger className="w-[200px] bg-card border-border">
             <SelectValue placeholder="Origem" />
           </SelectTrigger>
@@ -177,45 +161,94 @@ export default function ColaboradoresPage() {
         </Select>
       </div>
 
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border">
-                <TableHead>Nome</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Origem</TableHead>
-                <TableHead>Reavaliacao</TableHead>
-                <TableHead>DISC</TableHead>
+      <div className="border border-border rounded-lg bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border">
+              <TableHead>Colaborador</TableHead>
+              <TableHead>Cargo / Função</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Contratação</TableHead>
+              <TableHead>Reavaliação</TableHead>
+              <TableHead>DISC</TableHead>
+              <TableHead className="w-[60px]">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  Carregando colaboradores...
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : filtered.map(c => (
-                <TableRow key={c.id} className="border-border">
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-foreground">{c.nome}</p>
-                      <p className="text-xs text-muted-foreground">{c.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.cargo || '-'}</TableCell>
-                  <TableCell><Badge className={STATUS_COLORS[c.status]}>{c.status}</Badge></TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{c.origem.replace('_', ' ')}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {c.proxima_reavaliacao ? new Date(c.proxima_reavaliacao).toLocaleDateString('pt-BR') : '-'}
-                  </TableCell>
-                  <TableCell className="w-40">
-                    {c.perfil_disc ? <DISCBars perfil={c.perfil_disc} /> : <span className="text-xs text-muted-foreground">Pendente</span>}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            ) : paginated.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  Nenhum colaborador encontrado.
+                </TableCell>
+              </TableRow>
+            ) : paginated.map(c => (
+              <TableRow key={c.id} className="border-border">
+                <TableCell>
+                  <div className="font-medium text-foreground">{c.nome}</div>
+                  <div className="text-xs text-muted-foreground">{c.email || '-'}</div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">{c.cargo || '-'}</TableCell>
+                <TableCell>
+                  <Badge className={STATUS_COLORS[c.status]}>
+                    {STATUS_LABELS[c.status] || c.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {c.data_contratacao ? new Date(c.data_contratacao).toLocaleDateString('pt-BR') : '-'}
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {c.proxima_reavaliacao ? new Date(c.proxima_reavaliacao).toLocaleDateString('pt-BR') : '-'}
+                </TableCell>
+                <TableCell className="w-40">
+                  {c.perfil_disc
+                    ? <DISCBars perfil={c.perfil_disc} />
+                    : <span className="text-xs text-muted-foreground">Pendente</span>}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => { setColabToEdit(c); setIsFormOpen(true) }}>
+                        <Edit className="mr-2 h-4 w-4" /> Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDelete(c.id)}
+                      >
+                        <Trash className="mr-2 h-4 w-4" /> Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
+      </div>
+
+      {isFormOpen && (
+        <FormColaborador
+          colaborador={colabToEdit}
+          empresas={empresaAtual}
+          onClose={() => setIsFormOpen(false)}
+          onSaved={() => { setIsFormOpen(false); fetchData() }}
+        />
+      )}
     </div>
   )
 }

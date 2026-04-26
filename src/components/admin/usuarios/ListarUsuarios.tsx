@@ -12,6 +12,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreHorizontal, Edit, Trash, UserPlus, Search, Building2 } from "lucide-react"
 import type { User, Role, Empresa } from "@/types/database"
 import { FormUsuario } from "./FormUsuario"
+import { Pagination } from "@/components/ui/pagination"
+
+const ITEMS_PER_PAGE = 20
 
 export function ListarUsuarios() {
   const [users, setUsers] = useState<User[]>([])
@@ -25,6 +28,8 @@ export function ListarUsuarios() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [userToEdit, setUserToEdit] = useState<User | null>(null)
+  const [formMode, setFormMode] = useState<'convidar' | 'criar'>('convidar')
+  const [page, setPage] = useState(1)
 
   const fetchData = async () => {
     setLoading(true)
@@ -76,10 +81,16 @@ export function ListarUsuarios() {
     return matchesSearch && matchesRole && matchesStatus && matchesEmpresa
   })
 
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE)
+  const paginatedUsers = filteredUsers.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  // Reset to page 1 when filters change
+  useEffect(() => setPage(1), [search, roleFilter, statusFilter, empresaFilter])
+
   const getRoleBadgeColor = (role: Role) => {
     switch(role) {
       case 'super_admin': return 'bg-purple-500'
-      case 'admin': return 'bg-blue-500'
+      case 'user_empresa': return 'bg-blue-500'
       case 'gestor_rh': return 'bg-green-500'
       default: return 'bg-gray-500'
     }
@@ -99,7 +110,7 @@ export function ListarUsuarios() {
         </div>
         
         <div className="flex flex-wrap gap-2 items-center w-full xl:w-auto">
-          <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+          <Select value={empresaFilter} onValueChange={(v) => v !== null && setEmpresaFilter(v)}>
             <SelectTrigger className="w-[200px]">
               <span className="truncate">
                 {empresaFilter === 'todas' 
@@ -117,7 +128,7 @@ export function ListarUsuarios() {
             </SelectContent>
           </Select>
 
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <Select value={roleFilter} onValueChange={(v) => v !== null && setRoleFilter(v)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Nível" />
             </SelectTrigger>
@@ -131,7 +142,7 @@ export function ListarUsuarios() {
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => v !== null && setStatusFilter(v)}>
             <SelectTrigger className="w-[130px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -142,10 +153,16 @@ export function ListarUsuarios() {
             </SelectContent>
           </Select>
 
-          <Button onClick={() => { setUserToEdit(null); setIsFormOpen(true); }} className="gap-2 shrink-0">
-            <UserPlus className="h-4 w-4" />
-            Convidar
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button onClick={() => { setUserToEdit(null); setFormMode('convidar'); setIsFormOpen(true); }} variant="outline" className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Convidar
+            </Button>
+            <Button onClick={() => { setUserToEdit(null); setFormMode('criar'); setIsFormOpen(true); }} className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Criar
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -174,7 +191,7 @@ export function ListarUsuarios() {
                   Nenhum usuário encontrado.
                 </TableCell>
               </TableRow>
-            ) : filteredUsers.map(user => (
+            ) : paginatedUsers.map(user => (
               <TableRow key={user.id}>
                 <TableCell>
                   <div className="font-medium">{user.nome_completo}</div>
@@ -207,10 +224,8 @@ export function ListarUsuarios() {
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+                      <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsFormOpen(true); }}>
@@ -226,12 +241,20 @@ export function ListarUsuarios() {
             ))}
           </TableBody>
         </Table>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filteredUsers.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </div>
 
       {isFormOpen && (
-        <FormUsuario 
-          user={userToEdit} 
-          onClose={() => setIsFormOpen(false)} 
+        <FormUsuario
+          user={userToEdit}
+          mode={formMode}
+          onClose={() => setIsFormOpen(false)}
           onSaved={() => { setIsFormOpen(false); fetchData(); }} 
         />
       )}

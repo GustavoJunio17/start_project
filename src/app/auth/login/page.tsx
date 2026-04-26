@@ -232,6 +232,7 @@ export default function LoginPage() {
 
           <div className="links">
             <p>Candidato? <a href="/auth/register">Cadastre-se</a></p>
+            <p><a href="/auth/forgot-password">Esqueceu a senha?</a></p>
             <p>Super Admin? <a href="/setup-admin">Setup</a></p>
           </div>
         </div>

@@ -34,7 +34,7 @@ async function handleGET(req: NextRequest) {
   // Permissões
   if (user.role === 'super_admin' || user.role === 'super_gestor') {
     // Super admins veem todos - sem restrição
-  } else if (user.role === 'admin' || user.role === 'gestor_rh') {
+  } else if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
     // Admins veem candidatos da sua empresa
     if (empresaId && empresaId !== user.empresa_id) {
       return errorResponse('Voce nao tem permissao para pesquisar candidatos desta empresa', 403)

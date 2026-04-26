@@ -10,8 +10,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DISCChart, DISCBars } from '@/components/disc/DISCChart'
+import { Pagination } from '@/components/ui/pagination'
 import type { Colaborador, StatusColaborador } from '@/types/database'
 import { Search, Eye, AlertTriangle } from 'lucide-react'
+
+const supabase = createClient()
+
+const ITEMS_PER_PAGE = 20
 
 const STATUS_COLORS: Record<StatusColaborador, string> = {
   em_treinamento: 'bg-blue-500/20 text-blue-400',
@@ -25,7 +30,7 @@ export default function GestorColaboradoresPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Colaborador | null>(null)
-  const supabase = createClient()
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (!user?.empresa_id) return
@@ -45,6 +50,12 @@ export default function GestorColaboradoresPage() {
     c.nome.toLowerCase().includes(search.toLowerCase()) ||
     c.cargo?.toLowerCase().includes(search.toLowerCase())
   )
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setPage(1), [search])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   const needsReavaliacao = (c: Colaborador) => {
     if (!c.proxima_reavaliacao) return false
@@ -100,7 +111,7 @@ export default function GestorColaboradoresPage() {
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : filtered.map(c => (
+              ) : paginated.map(c => (
                 <TableRow key={c.id} className="border-border">
                   <TableCell>
                     <p className="font-medium text-foreground">{c.nome}</p>
@@ -127,6 +138,13 @@ export default function GestorColaboradoresPage() {
             </TableBody>
           </Table>
         </CardContent>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </Card>
     </div>
   )

@@ -10,8 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { QuadranteFeedback } from '@/components/feedback/QuadranteFeedback'
+import { Pagination } from '@/components/ui/pagination'
 import type { Feedback, Colaborador, Candidato, TipoFeedback } from '@/types/database'
 import { Plus, MessageSquare, StopCircle, Play, RefreshCw, Zap } from 'lucide-react'
+
+const supabase = createClient()
+
+const ITEMS_PER_PAGE = 15
 
 export default function FeedbacksPage() {
   const { user } = useAuth()
@@ -21,10 +26,10 @@ export default function FeedbacksPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [page, setPage] = useState(1)
   const [tipo, setTipo] = useState<TipoFeedback>('interno_colaborador')
   const [targetId, setTargetId] = useState('')
   const [visivel, setVisivel] = useState(false)
-  const supabase = createClient()
 
   useEffect(() => {
     if (!user?.empresa_id) return
@@ -62,6 +67,9 @@ export default function FeedbacksPage() {
     const { data: updatedFbs } = await supabase.from('feedbacks').select('*').eq('empresa_id', user.empresa_id).order('created_at', { ascending: false })
     setFeedbacks(updatedFbs || [])
   }
+
+  const totalPages = Math.ceil(feedbacks.length / ITEMS_PER_PAGE)
+  const paginated = feedbacks.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -116,7 +124,7 @@ export default function FeedbacksPage() {
       <div className="space-y-3">
         {loading ? (
           <p className="text-center text-muted-foreground py-8">Carregando...</p>
-        ) : feedbacks.map(fb => (
+        ) : paginated.map(fb => (
           <Card key={fb.id} className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
@@ -147,6 +155,13 @@ export default function FeedbacksPage() {
           </Card>
         ))}
       </div>
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={feedbacks.length}
+        itemsPerPage={ITEMS_PER_PAGE}
+        onPageChange={setPage}
+      />
     </div>
   )
 }

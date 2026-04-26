@@ -12,6 +12,14 @@ export type StatusColaborador = 'em_treinamento' | 'ativo' | 'desligado'
 
 export type OrigemColaborador = 'contratacao_direta' | 'conversao_candidato' | 'importacao_planilha'
 
+export type EscolaridadeColaborador = 'Medio' | 'Superior' | 'Pos-graduado'
+
+export type ModeloTrabalhoCola = 'remoto' | 'hibrido' | 'presencial'
+
+export type RegimeContratoColaborador = 'CLT' | 'PJ' | 'Estagio' | 'Freelance'
+
+export type NivelColaborador = 'Junior' | 'Pleno' | 'Senior' | 'Specialist'
+
 export type TipoTeste = 'disc' | 'logica' | 'vendas' | 'atendimento'
 
 export type TipoFeedback = 'interno_colaborador' | 'externo_candidato'
@@ -21,6 +29,12 @@ export type StatusAgendamento = 'agendado' | 'confirmado' | 'realizado' | 'cance
 export type TipoAgendamento = 'online' | 'presencial'
 
 export type StatusVaga = 'rascunho' | 'aberta' | 'pausada' | 'encerrada'
+
+export type ModeloTrabalho = 'remoto' | 'hibrido' | 'presencial'
+
+export type RegimeContrato = 'CLT' | 'PJ' | 'Estagio' | 'Freelance'
+
+export type EscolaridadeMinima = 'EnsinioMedio' | 'Superior' | 'Pos'
 
 export type Tema = 'dark' | 'clean' | 'auto'
 
@@ -80,6 +94,15 @@ export interface Empresa {
   criado_por: string | null
 }
 
+export interface TemplateTeste {
+  id: string
+  empresa_id: string
+  nome: string
+  descricao: string | null
+  questoes_ids: string[]
+  created_at: string
+}
+
 export interface Vaga {
   id: string
   empresa_id: string
@@ -89,8 +112,21 @@ export interface Vaga {
   categoria: string | null
   perfil_disc_ideal: PerfilDISC | null
   status: StatusVaga
+  template_testes_id?: string | null
   criado_por: string | null
   created_at: string
+  modelo_trabalho?: ModeloTrabalho | null
+  regime?: RegimeContrato | null
+  salario?: number | null
+  hard_skills?: string[] | null
+  idiomas?: { idioma: string; nivel: string }[] | null
+  escolaridade_minima?: EscolaridadeMinima | null
+  departamento?: string | null
+  data_limite?: string | null
+  quantidade_vagas?: number | null
+  beneficios?: string[] | null
+  diferenciais?: string | null
+  perguntas_triagem?: { pergunta: string; tipo: string }[] | null
   empresa?: Empresa
 }
 
@@ -126,7 +162,16 @@ export interface Colaborador {
   nome: string
   cargo: string | null
   email: string | null
+  telefone?: string | null
+  cpf?: string | null
+  departamento?: string | null
   data_contratacao: string | null
+  modelo_trabalho?: ModeloTrabalhoCola | null
+  regime_contrato?: RegimeContratoColaborador | null
+  nivel?: NivelColaborador | null
+  salario?: number | null
+  hard_skills?: string[] | null
+  escolaridade?: EscolaridadeColaborador | null
   origem: OrigemColaborador
   status: StatusColaborador
   perfil_disc: PerfilDISC | null
@@ -247,4 +292,21 @@ export interface Convite {
   usado: boolean
   criado_por: string
   created_at: string
+}
+
+export interface Candidatura {
+  id: string
+  vaga_id: string
+  nome: string
+  email: string
+  telefone: string
+  linkedin: string | null
+  pretensao_salarial: string | null
+  mensagem: string | null
+  curriculo: Buffer | null
+  curriculo_nome: string | null
+  status: 'pendente' | 'lido' | 'rejeito' | 'contratado'
+  created_at: string
+  updated_at: string
+  vaga?: Vaga
 }

@@ -24,7 +24,7 @@ export function verifyToken(token: string): JwtPayload | null {
 export const AUTH_COOKIE = 'auth_token'
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure: false, // Always false for development
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 60 * 60 * 24 * 7, // 7 days

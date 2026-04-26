@@ -3,6 +3,8 @@ import { getServerUser } from './session'
 import type { Role } from '@/types/database'
 import { canManageVagas, canManageCandidatos, canManageUsers, getUnauthorizedMessage } from './permissions'
 
+export type AuthUser = NonNullable<Awaited<ReturnType<typeof getServerUser>>>
+
 export type ApiResponse<T = unknown> = {
   success: boolean
   data?: T
@@ -47,12 +49,23 @@ export async function requirePermission<T extends Role>(
 }
 
 /**
+ * Verifica autenticação e opcionalmente restringe a roles específicas.
+ * Lança 'UNAUTHORIZED' ou 'FORBIDDEN' para o withErrorHandler capturar.
+ */
+export async function requireRole(allowedRoles?: Role[]): Promise<AuthUser> {
+  const user = await getServerUser()
+  if (!user) throw new Error('UNAUTHORIZED')
+  if (allowedRoles && !allowedRoles.includes(user.role as Role)) throw new Error('FORBIDDEN')
+  return user as AuthUser
+}
+
+/**
  * Wrapper para rotas da API com tratamento de erros
  * Suporta rotas com e sem dynamic params
  */
-export function withErrorHandler(
-  handler: (req: NextRequest, context?: any) => Promise<NextResponse>
-): any {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withErrorHandler(handler: (req: NextRequest, context?: any) => Promise<NextResponse>): any {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return async (req: NextRequest, context?: any) => {
     try {
       return await handler(req, context)

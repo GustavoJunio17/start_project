@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "node scripts/migrate-status-vaga.js",
+    "migrate:templates": "node scripts/migrate-templates.js",
+    "migrate:vagas": "node scripts/migrate-vaga-fields.js",
+    "seed:disc": "node scripts/seed-disc-templates.js",
+    "verify:disc": "node scripts/verify-disc-templates.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
@@ -15,6 +20,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
+    "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.8.0",
     "next": "16.2.3",

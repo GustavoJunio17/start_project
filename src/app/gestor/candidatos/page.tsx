@@ -14,8 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea'
 import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
 import { DISCChart, DISCBars } from '@/components/disc/DISCChart'
+import { Pagination } from '@/components/ui/pagination'
 import type { Candidato, StatusCandidatura, Agendamento, TipoAgendamento, Vaga } from '@/types/database'
 import { Search, Calendar, Eye } from 'lucide-react'
+
+const supabase = createClient()
+
+const ITEMS_PER_PAGE = 20
 
 const STATUS_LABELS: Record<StatusCandidatura, string> = {
   inscrito: 'Inscrito', em_avaliacao: 'Em Avaliacao', entrevista_agendada: 'Entrevista',
@@ -33,7 +38,7 @@ export default function GestorCandidatosPage() {
   const [agendDialogOpen, setAgendDialogOpen] = useState(false)
   const [agendForm, setAgendForm] = useState({ data_hora: '', tipo: 'online' as TipoAgendamento, link_reuniao: '', endereco: '', observacoes: '' })
   const [agendCandId, setAgendCandId] = useState('')
-  const supabase = createClient()
+  const [page, setPage] = useState(1)
 
   const loadData = async () => {
     if (!user?.empresa_id) return
@@ -83,6 +88,12 @@ export default function GestorCandidatosPage() {
     const matchStatus = filterStatus === 'all' || c.status_candidatura === filterStatus
     return matchSearch && matchStatus
   })
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setPage(1), [search, filterStatus])
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -179,7 +190,7 @@ export default function GestorCandidatosPage() {
         </DialogContent>
       </Dialog>
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border" id="candidatos-table">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -195,7 +206,7 @@ export default function GestorCandidatosPage() {
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : filtered.map(c => (
+              ) : paginated.map(c => (
                 <TableRow key={c.id} className="border-border">
                   <TableCell>
                     <button onClick={() => setSelectedCandidato(c)} className="text-left">
@@ -225,6 +236,13 @@ export default function GestorCandidatosPage() {
             </TableBody>
           </Table>
         </CardContent>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </Card>
     </div>
   )

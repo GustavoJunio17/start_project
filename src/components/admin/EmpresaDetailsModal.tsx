@@ -48,7 +48,7 @@ export function EmpresaDetailsModal({
       .eq('empresa_id', empresa.id)
     setUsers(data || [])
     
-    const owners = (data || []).filter(u => u.role === 'admin')
+    const owners = (data || []).filter(u => u.role === 'user_empresa')
     const colabs = (data || []).filter(u => u.role === 'colaborador')
     setColaboradores(colabs)
   }
@@ -67,7 +67,7 @@ export function EmpresaDetailsModal({
           email: userForm.email,
           nome_completo: userForm.nome_completo,
           telefone: userForm.telefone,
-          role: 'admin',
+          role: 'user_empresa',
           empresa_id: empresa.id,
         }),
       })
@@ -138,7 +138,7 @@ export function EmpresaDetailsModal({
 
   if (!empresa) return null
 
-  const ownerUser = users.find(u => u.role === 'admin')
+  const ownerUser = users.find(u => u.role === 'user_empresa')
 
   return (
     <>

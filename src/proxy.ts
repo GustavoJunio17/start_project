@@ -1,32 +1,108 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { AUTH_COOKIE, verifyToken } from '@/lib/auth/jwt'
+import { NextRequest, NextResponse } from 'next/server'
+import { jwtVerify } from 'jose'
 
-export async function proxy(request: NextRequest) {
-  const token = request.cookies.get(AUTH_COOKIE)?.value
-  const user = token ? verifyToken(token) : null
+const AUTH_COOKIE = 'auth_token'
 
-  const path = request.nextUrl.pathname
+const PUBLIC_PATHS = [
+  '/',
+  '/auth/login',
+  '/auth/register',
+  '/auth/login-test',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/vagas',
+  '/setup-admin',
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/logout',
+  '/api/auth/setup-admin',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password',
+  '/api/vagas',
+]
 
-  const publicRoutes = ['/auth/login', '/auth/register', '/vagas', '/setup-admin']
-  const isPublicRoute = publicRoutes.some(route => path.startsWith(route))
+const ROUTE_ROLES: [string, string[]][] = [
+  ['/admin', ['super_admin', 'super_gestor']],
+  ['/empresa', ['user_empresa', 'super_admin', 'super_gestor']],
+  ['/gestor', ['gestor_rh', 'user_empresa', 'super_admin', 'super_gestor']],
+  ['/candidato', ['candidato']],
+  ['/api/admin', ['super_admin', 'super_gestor']],
+]
 
-  if (!user && !isPublicRoute && path !== '/') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
+function isPublic(pathname: string): boolean {
+  return PUBLIC_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?'),
+  )
+}
+
+function getAllowedRoles(pathname: string): string[] | null {
+  for (const [prefix, roles] of ROUTE_ROLES) {
+    if (pathname.startsWith(prefix)) return roles
+  }
+  return null
+}
+
+export async function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // CSRF: reject API mutations from foreign origins
+  if (pathname.startsWith('/api/') && req.method !== 'GET' && req.method !== 'HEAD') {
+    const origin = req.headers.get('origin')
+    if (origin) {
+      const host = req.headers.get('host') || req.nextUrl.host
+      const expected = `${req.nextUrl.protocol}//${host}`
+      if (origin !== expected) {
+        return new NextResponse(JSON.stringify({ error: 'CSRF validation failed' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+    }
   }
 
-  if (user && path.startsWith('/auth/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/redirect'
-    return NextResponse.redirect(url)
+  if (isPublic(pathname)) return NextResponse.next()
+
+  const token = req.cookies.get(AUTH_COOKIE)?.value
+
+  if (!token) {
+    const loginUrl = new URL('/auth/login', req.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return NextResponse.next()
+  try {
+    const secret = new TextEncoder().encode(
+      process.env.JWT_SECRET || 'dev-secret-change-in-production',
+    )
+    const { payload } = await jwtVerify(token, secret)
+    const role = payload.role as string
+
+    const allowedRoles = getAllowedRoles(pathname)
+    if (allowedRoles && !allowedRoles.includes(role)) {
+      const dashboardMap: Record<string, string> = {
+        super_admin: '/admin/dashboard',
+        super_gestor: '/admin/dashboard',
+        user_empresa: '/empresa/dashboard',
+        gestor_rh: '/gestor/dashboard',
+        candidato: '/candidato/dashboard',
+        colaborador: '/gestor/dashboard',
+      }
+      const dest = dashboardMap[role] ?? '/auth/login'
+      return NextResponse.redirect(new URL(dest, req.url))
+    }
+
+    return NextResponse.next()
+  } catch {
+    const loginUrl = new URL('/auth/login', req.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.delete(AUTH_COOKIE)
+    return response
+  }
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

@@ -7,14 +7,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
 import { DISCBars } from '@/components/disc/DISCChart'
+import { Pagination } from '@/components/ui/pagination'
 import type { Candidato } from '@/types/database'
 import { Star, Trophy } from 'lucide-react'
+
+const supabase = createClient()
+
+const ITEMS_PER_PAGE = 20
 
 export default function RankingPage() {
   const { user } = useAuth()
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (!user?.empresa_id) return
@@ -30,6 +35,9 @@ export default function RankingPage() {
     }
     load()
   }, [user])
+
+  const totalPages = Math.ceil(candidatos.length / ITEMS_PER_PAGE)
+  const paginated = candidatos.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
   return (
     <div className="space-y-6">
@@ -56,7 +64,7 @@ export default function RankingPage() {
         </div>
       )}
 
-      <Card className="bg-card border-border">
+      <Card className="bg-card border-border" id="ranking-table">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -72,9 +80,9 @@ export default function RankingPage() {
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : candidatos.map((c, i) => (
+              ) : paginated.map((c, i) => (
                 <TableRow key={c.id} className="border-border">
-                  <TableCell className="font-bold text-muted-foreground">{i + 1}</TableCell>
+                  <TableCell className="font-bold text-muted-foreground">{(page - 1) * ITEMS_PER_PAGE + i + 1}</TableCell>
                   <TableCell>
                     <p className="font-medium text-foreground">{c.nome_completo}</p>
                     <p className="text-xs text-muted-foreground">{c.email}</p>
@@ -90,6 +98,13 @@ export default function RankingPage() {
             </TableBody>
           </Table>
         </CardContent>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={candidatos.length}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={setPage}
+        />
       </Card>
     </div>
   )

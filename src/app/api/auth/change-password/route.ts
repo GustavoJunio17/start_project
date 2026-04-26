@@ -11,8 +11,11 @@ export async function POST(request: NextRequest) {
 
   const { password } = await request.json()
 
-  if (!password || password.length < 6) {
-    return NextResponse.json({ error: 'Senha deve ter no minimo 6 caracteres' }, { status: 400 })
+  if (!password || password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+    return NextResponse.json(
+      { error: 'Senha deve ter no minimo 8 caracteres, uma maiuscula, uma minuscula e um numero' },
+      { status: 400 },
+    )
   }
 
   const hash = await bcrypt.hash(password, 10)

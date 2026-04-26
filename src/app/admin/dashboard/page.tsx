@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { Building2, Users, ClipboardList, TrendingUp, CheckCircle, XCircle, Clock, Star } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
+const supabase = createClient()
+
 interface KPIs {
   totalEmpresas: number
   totalUsuarios: number
@@ -25,8 +27,6 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [kpis, setKpis] = useState<KPIs | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-
   useEffect(() => {
     async function loadKPIs() {
       const [empresasRes, usersRes, candidatosRes, testesRes] = await Promise.all([
@@ -80,7 +80,7 @@ export default function AdminDashboard() {
     }
 
     loadKPIs()
-  }, [supabase])
+  }, [])
 
   if (loading) {
     return (

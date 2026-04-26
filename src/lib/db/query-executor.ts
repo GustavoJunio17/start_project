@@ -3,7 +3,7 @@ import pool from './pool'
 // Allowed tables to prevent SQL injection via table name
 const ALLOWED_TABLES = new Set([
   'users', 'empresas', 'vagas', 'candidatos', 'colaboradores',
-  'questoes_disc', 'respostas_teste', 'feedbacks', 'agendamentos',
+  'questoes_disc', 'templates_testes', 'respostas_teste', 'feedbacks', 'agendamentos',
   'pdis', 'onboardings', 'treinamentos_ia', 'notificacoes_vaga',
   'alertas_automaticos', 'convites',
 ])
@@ -32,10 +32,16 @@ interface QueryDescriptor {
   isSingle: boolean
 }
 
-// Validate identifier (column/table names) — alphanumeric + underscore + dot + * only
+// Validate a single column/table name — word chars and dot only (e.g. "empresa_id", "t.id")
 function validIdent(name: string): string {
-  if (!/^[\w.*,\s:()]+$/.test(name)) throw new Error(`Invalid identifier: ${name}`)
+  if (!/^[\w.]+$/.test(name)) throw new Error(`Invalid identifier: ${name}`)
   return name
+}
+
+// Validate a comma-separated column list (e.g. "id, nome, email" or "*")
+function validColList(cols: string): string {
+  if (!/^[\w.*,\s]+$/.test(cols)) throw new Error(`Invalid column list: ${cols}`)
+  return cols
 }
 
 /**
@@ -80,7 +86,20 @@ export async function buildAndRunQuery(desc: QueryDescriptor) {
   let paramIdx = 1
 
   function addParam(val: unknown) {
-    params.push(val)
+    // Arrays of objects (e.g. idiomas JSONB) must be serialized to JSON string
+    // Arrays of primitives (e.g. hard_skills TEXT[]) stay as-is for pg
+    if (Array.isArray(val)) {
+      if (val.length > 0 && typeof val[0] === 'object' && val[0] !== null) {
+        params.push(JSON.stringify(val))
+      } else {
+        params.push(val)
+      }
+    } else if (val !== null && typeof val === 'object') {
+      // Plain objects (e.g. perfil_disc_ideal JSONB) must be serialized
+      params.push(JSON.stringify(val))
+    } else {
+      params.push(val)
+    }
     return `$${paramIdx++}`
   }
 
@@ -162,7 +181,7 @@ export async function buildAndRunQuery(desc: QueryDescriptor) {
 
         selectList = [mainSelect, ...joinSelects].join(', ')
       } else {
-        selectList = mainCols === '*' ? '*' : validIdent(mainCols)
+        selectList = mainCols === '*' ? '*' : validColList(mainCols)
       }
 
       // Build FROM + JOINs

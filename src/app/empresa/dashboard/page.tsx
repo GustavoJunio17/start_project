@@ -7,48 +7,30 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Briefcase, Users, UserCheck, ClipboardList, CheckCircle, XCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
+const supabase = createClient()
+
 export default function EmpresaDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState({ vagas: 0, candidatos: 0, colaboradores: 0, testes: 0, aprovados: 0, reprovados: 0 })
   const [vagasData, setVagasData] = useState<{ titulo: string; candidatos: number }[]>([])
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-
   useEffect(() => {
     if (!user?.empresa_id) return
     async function load() {
-      const [vagasRes, candidatosRes, colaboradoresRes] = await Promise.all([
-        supabase.from('vagas').select('id, titulo').eq('empresa_id', user!.empresa_id!),
-        supabase.from('candidatos').select('id, vaga_id, status_candidatura').eq('empresa_id', user!.empresa_id!),
-        supabase.from('colaboradores').select('id').eq('empresa_id', user!.empresa_id!),
-      ])
-
-      const vagas = vagasRes.data || []
-      const candidatos = candidatosRes.data || []
-      const colaboradores = colaboradoresRes.data || []
-
-      const aprovados = candidatos.filter(c => c.status_candidatura === 'aprovado' || c.status_candidatura === 'contratado').length
-      const reprovados = candidatos.filter(c => c.status_candidatura === 'reprovado').length
-
-      setStats({
-        vagas: vagas.length,
-        candidatos: candidatos.length,
-        colaboradores: colaboradores.length,
-        testes: 0,
-        aprovados,
-        reprovados,
-      })
-
-      // Candidatos por vaga
-      const vagaMap = vagas.map(v => ({
-        titulo: v.titulo.length > 15 ? v.titulo.substring(0, 15) + '...' : v.titulo,
-        candidatos: candidatos.filter(c => c.vaga_id === v.id).length,
-      }))
-      setVagasData(vagaMap)
-      setLoading(false)
+      try {
+        const res = await fetch('/api/empresa/dashboard')
+        if (!res.ok) throw new Error('Failed to fetch')
+        const data = await res.json()
+        setStats(data.stats)
+        setVagasData(data.vagasData)
+      } catch (error) {
+        console.error('Erro ao carregar dashboard:', error)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
-  }, [user, supabase])
+  }, [user?.empresa_id])
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00D4FF]" /></div>

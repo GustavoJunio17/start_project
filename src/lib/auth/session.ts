@@ -7,19 +7,31 @@ import pool from '../db/pool'
  * Returns the full user profile or null.
  */
 export async function getServerUser() {
-  const cookieStore = await cookies()
-  const token = cookieStore.get(AUTH_COOKIE)?.value
-  if (!token) return null
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get(AUTH_COOKIE)?.value
 
-  const payload = verifyToken(token)
-  if (!payload) return null
+    if (!token) {
+      console.log('[getServerUser] No token found in cookies')
+      return null
+    }
 
-  const { rows } = await pool.query(
-    'SELECT id, email, nome_completo, role, empresa_id, empresa_nome, permissoes, avatar_url, telefone, tema_preferido, ativo, created_at, updated_at, ultimo_login FROM users WHERE id = $1 AND ativo = true',
-    [payload.userId],
-  )
+    const payload = verifyToken(token)
+    if (!payload) {
+      console.log('[getServerUser] Invalid token')
+      return null
+    }
 
-  return rows[0] ?? null
+    const { rows } = await pool.query(
+      'SELECT id, email, nome_completo, role, empresa_id, empresa_nome, permissoes, avatar_url, telefone, tema_preferido, ativo, created_at, updated_at, ultimo_login FROM users WHERE id = $1 AND ativo = true',
+      [payload.userId],
+    )
+
+    return rows[0] ?? null
+  } catch (error) {
+    console.error('[getServerUser] Error:', error)
+    return null
+  }
 }
 
 /**

@@ -1,0 +1,247 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { createClient } from '@/lib/db/client'
+import { useAuth } from '@/hooks/useAuth'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import type { TemplateTeste, QuestaoDisc } from '@/types/database'
+import { ArrowLeft, Trash2, Save } from 'lucide-react'
+
+const supabase = createClient()
+
+export default function TemplateEditarPage() {
+  const { user } = useAuth()
+  const router = useRouter()
+  const params = useParams()
+  const templateId = params.id as string
+
+  const [template, setTemplate] = useState<TemplateTeste | null>(null)
+  const [questoes, setQuestoes] = useState<QuestaoDisc[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+
+  useEffect(() => {
+    if (!user?.empresa_id || !templateId) return
+
+    async function load() {
+      const templateRes = await supabase
+        .from('templates_testes')
+        .select('*')
+        .eq('id', templateId)
+        .eq('empresa_id', user.empresa_id)
+        .single()
+
+      if (templateRes.data) {
+        setTemplate(templateRes.data)
+        setNome(templateRes.data.nome)
+        setDescricao(templateRes.data.descricao || '')
+
+        const questoesRes = await supabase
+          .from('questoes_disc')
+          .select('*')
+          .in('id', templateRes.data.questoes_ids)
+
+        setQuestoes(questoesRes.data || [])
+      }
+
+      setLoading(false)
+    }
+
+    load()
+  }, [user, templateId])
+
+  const handleSave = async () => {
+    if (!template) return
+
+    setSaving(true)
+    try {
+      await supabase
+        .from('templates_testes')
+        .update({
+          nome,
+          descricao: descricao || null,
+        })
+        .eq('id', template.id)
+
+      router.push(`/empresa/testes/${template.id}`)
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemoveQuestao = async (questaoId: string) => {
+    if (!template) return
+
+    const novasQuestoes = questoes.filter((q) => q.id !== questaoId)
+    const novasQuestoesIds = novasQuestoes.map((q) => q.id)
+
+    try {
+      await supabase
+        .from('templates_testes')
+        .update({ questoes_ids: novasQuestoesIds })
+        .eq('id', template.id)
+
+      setTemplate({ ...template, questoes_ids: novasQuestoesIds })
+      setQuestoes(novasQuestoes)
+    } catch (error) {
+      console.error('Erro ao remover questão:', error)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    )
+  }
+
+  if (!template) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <p className="text-muted-foreground">Template não encontrado</p>
+        <Button variant="outline" onClick={() => router.push('/empresa/testes')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(`/empresa/testes/${template.id}`)}
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <h1 className="text-2xl font-bold text-foreground">Editar Template</h1>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-lg">Informações do Template</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="nome" className="text-sm font-medium">
+              Nome
+            </Label>
+            <Input
+              id="nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              className="mt-2 bg-background border-border"
+              placeholder="ex: DISC Padrão"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="descricao" className="text-sm font-medium">
+              Descrição
+            </Label>
+            <Input
+              id="descricao"
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              className="mt-2 bg-background border-border"
+              placeholder="ex: Avaliação completa com 16 questões"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/empresa/testes/${template.id}`)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-lg">
+            Questões ({questoes.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {questoes.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Nenhuma questão no template
+              </p>
+            ) : (
+              questoes.map((q, idx) => (
+                <div
+                  key={q.id}
+                  className="p-4 rounded bg-background border border-border group relative"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-bold text-[#00D4FF] min-w-8">
+                          {idx + 1}.
+                        </span>
+                        <p className="text-sm font-medium text-foreground">{q.pergunta}</p>
+                      </div>
+                      <div className="mt-3 ml-6 space-y-1">
+                        {q.opcoes.map((opcao, opcaoIdx) => {
+                          const coresOpcoes: Record<string, string> = {
+                            D: 'bg-red-500/20 text-red-400',
+                            I: 'bg-yellow-500/20 text-yellow-400',
+                            S: 'bg-green-500/20 text-green-400',
+                            C: 'bg-blue-500/20 text-blue-400',
+                          }
+                          return (
+                            <div key={opcaoIdx} className="flex items-center gap-2">
+                              <span
+                                className={`text-xs font-bold px-2 py-1 rounded ${
+                                  coresOpcoes[opcao.dimensao]
+                                }`}
+                              >
+                                {opcao.dimensao}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                {opcao.texto}
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveQuestao(q.id)}
+                      className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive/80 transition-opacity"
+                      title="Remover questão"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

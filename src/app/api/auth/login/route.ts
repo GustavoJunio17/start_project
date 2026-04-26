@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import pool from '@/lib/db/pool'
 import { signToken, AUTH_COOKIE, COOKIE_OPTIONS } from '@/lib/auth/jwt'
+import { checkRateLimit, getClientIp } from '@/lib/auth/rate-limit'
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request)
+  if (!checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas de login. Aguarde 15 minutos.' },
+      { status: 429 },
+    )
+  }
+
   const { email, password } = await request.json()
 
   if (!email || !password) {

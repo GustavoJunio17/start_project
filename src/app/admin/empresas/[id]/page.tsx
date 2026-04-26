@@ -86,7 +86,7 @@ export default function EmpresaDetailsPage() {
           email: userForm.email,
           nome_completo: userForm.nome_completo,
           telefone: userForm.telefone,
-          role: 'admin',
+          role: 'user_empresa',
           empresa_id: empresaId,
         }),
       })
@@ -153,7 +153,7 @@ export default function EmpresaDetailsPage() {
     )
   }
 
-  const ownerUser = users.find(u => u.role === 'admin')
+  const ownerUser = users.find(u => u.role === 'user_empresa')
 
   return (
     <div className="space-y-6">
