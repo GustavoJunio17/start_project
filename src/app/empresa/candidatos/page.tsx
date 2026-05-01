@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useCargosEDepartamentos } from '@/hooks/useCargosEDepartamentos'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,6 +46,7 @@ type TabType = typeof TABS[number]
 
 export default function CandidatosPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(user?.empresa_id)
   const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,15 +77,28 @@ export default function CandidatosPage() {
   const [candidaturaForAction, setCandidaturaForAction] = useState<Candidatura | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  const verId = searchParams.get('ver')
+
   useEffect(() => {
     Promise.all([
       fetch('/api/candidaturas/empresa').then(r => r.json()),
       fetch('/api/empresa/templates').then(r => r.json()),
     ]).then(([candidaturas, templates]) => {
-      setCandidaturas(Array.isArray(candidaturas) ? candidaturas : [])
+      const loaded: Candidatura[] = Array.isArray(candidaturas) ? candidaturas : []
+      setCandidaturas(loaded)
       setTemplates(Array.isArray(templates) ? templates : [])
       setLoading(false)
+
+      // Auto-abrir candidatura via ?ver=CANDIDATO_ID
+      if (verId) {
+        const candidatura = loaded.find(c => c.candidato_id === verId)
+        if (candidatura) {
+          setSelectedCandidatura(candidatura)
+          setIsOpen(true)
+        }
+      }
     }).catch(() => setLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const vagas = [...new Set(candidaturas.map(c => c.vaga_titulo))].filter(Boolean)

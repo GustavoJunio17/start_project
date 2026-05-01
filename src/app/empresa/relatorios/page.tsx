@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,6 +22,7 @@ interface CandidatoComVaga extends Candidato {
 
 export default function RelatoriosPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [data, setData] = useState<{
     statusDist: { name: string; value: number }[]
     classifDist: { name: string; value: number }[]
@@ -88,10 +90,15 @@ export default function RelatoriosPage() {
       })
     : candidatos
 
-  // Ordenar por match_score (melhores perfis)
+  // Somente pendentes (inscrito) e banco de talentos, ordenados por match_score
   const topCandidatos = candidatosFiltrados
+    .filter(c => c.status_candidatura === 'inscrito' || c.disponivel_banco_talentos)
     .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
     .filter(c => c.match_score !== null)
+
+  const irParaCandidato = (id: string) => {
+    router.push(`/empresa/candidatos?ver=${id}`)
+  }
 
   return (
     <div className="space-y-6">
@@ -128,7 +135,11 @@ export default function RelatoriosPage() {
           </h2>
           <div className={`grid ${topCandidatos.length >= 3 ? 'grid-cols-3' : topCandidatos.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
             {topCandidatos.slice(0, 3).map((c, i) => (
-              <Card key={c.id} className={`bg-card border-2 ${i === 0 ? 'border-[#F59E0B]' : i === 1 ? 'border-[#94A3B8]' : 'border-[#B45309]'}`}>
+              <Card
+                key={c.id}
+                onClick={() => irParaCandidato(c.id)}
+                className={`bg-card border-2 cursor-pointer transition-opacity hover:opacity-80 ${i === 0 ? 'border-[#F59E0B]' : i === 1 ? 'border-[#94A3B8]' : 'border-[#B45309]'}`}
+              >
                 <CardContent className="p-4 text-center">
                   <Trophy className="w-6 h-6 mx-auto mb-2" style={{ color: i === 0 ? '#F59E0B' : i === 1 ? '#94A3B8' : '#B45309' }} />
                   <p className="font-bold text-foreground text-sm">{c.nome_completo}</p>
@@ -202,7 +213,11 @@ export default function RelatoriosPage() {
               </TableHeader>
               <TableBody>
                 {topCandidatos.map((c, i) => (
-                  <TableRow key={c.id} className="border-border">
+                  <TableRow
+                    key={c.id}
+                    className="border-border cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => irParaCandidato(c.id)}
+                  >
                     <TableCell className="font-bold text-muted-foreground">{i + 1}</TableCell>
                     <TableCell>
                       <p className="font-medium text-foreground text-sm">{c.nome_completo}</p>

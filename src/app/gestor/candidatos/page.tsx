@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,6 +30,7 @@ const STATUS_LABELS: Record<StatusCandidatura, string> = {
 
 export default function GestorCandidatosPage() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [candidatos, setCandidatos] = useState<Candidato[]>([])
   const [vagas, setVagas] = useState<Pick<Vaga, 'id' | 'titulo'>[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,9 +48,17 @@ export default function GestorCandidatosPage() {
       supabase.from('candidatos').select('*, vaga:vagas(titulo, perfil_disc_ideal)').eq('empresa_id', user.empresa_id).order('match_score', { ascending: false, nullsFirst: false }),
       supabase.from('vagas').select('id, titulo').eq('empresa_id', user.empresa_id),
     ])
-    setCandidatos(candRes.data || [])
+    const loaded = candRes.data || []
+    setCandidatos(loaded)
     setVagas(vagasRes.data || [])
     setLoading(false)
+
+    // Auto-abrir candidato via query param ?ver=ID
+    const verId = searchParams.get('ver')
+    if (verId) {
+      const candidatoParaAbrir = loaded.find(c => c.id === verId)
+      if (candidatoParaAbrir) setSelectedCandidato(candidatoParaAbrir)
+    }
   }
 
   useEffect(() => { loadData() }, [user])
