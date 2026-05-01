@@ -1,20 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import type { User, Tema } from '@/types/database'
-import { Settings, UserPlus, Shield, Copy, Check } from 'lucide-react'
-
-const supabase = createClient()
+import type { User } from '@/types/database'
+import { Settings, UserPlus, Shield, Copy, Check, Plus, Edit2, Trash2 } from 'lucide-react'
+import { FormGestorRH } from '@/components/empresa/FormGestorRH'
 
 export default function ConfiguracoesPage() {
   const { user } = useAuth()
@@ -26,17 +24,17 @@ export default function ConfiguracoesPage() {
   const [inviteRole, setInviteRole] = useState('gestor_rh')
   const [inviteLink, setInviteLink] = useState('')
   const [copied, setCopied] = useState(false)
-  const [tema, setTema] = useState<Tema>('dark')
+  const [isFormGestorOpen, setIsFormGestorOpen] = useState(false)
+  const [selectedGestor, setSelectedGestor] = useState<User | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!user?.empresa_id) return
     async function load() {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .eq('empresa_id', user!.empresa_id!)
-        .in('role', ['user_empresa', 'gestor_rh'])
-      setGestores(data || [])
+      const res = await fetch('/api/empresa/gestores-rh')
+      const data = await res.json()
+      setGestores(Array.isArray(data) ? data : [])
       setLoading(false)
     }
     load()
@@ -69,10 +67,40 @@ export default function ConfiguracoesPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleThemeChange = async (newTema: Tema) => {
-    setTema(newTema)
-    if (user?.empresa_id) {
-      await supabase.from('empresas').update({ tema_padrao: newTema }).eq('id', user.empresa_id)
+  const handleGestorSaved = async () => {
+    setIsFormGestorOpen(false)
+    setSelectedGestor(null)
+    const res = await fetch('/api/empresa/gestores-rh')
+    const data = await res.json()
+    setGestores(Array.isArray(data) ? data : [])
+  }
+
+  const handleEdit = (gestor: User) => {
+    setSelectedGestor(gestor)
+    setIsFormGestorOpen(true)
+  }
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteConfirmId(id)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirmId) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/empresa/gestores-rh/${deleteConfirmId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Erro ao remover gestor')
+      }
+      await handleGestorSaved()
+      setDeleteConfirmId(null)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao remover gestor')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -89,10 +117,18 @@ export default function ConfiguracoesPage() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Shield className="w-4 h-4 text-[#00D4FF]" /> Equipe de RH
             </CardTitle>
-            <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) setInviteLink('') }}>
-              <DialogTrigger render={<Button size="sm" className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" />}>
-                <UserPlus className="w-4 h-4 mr-2" /> Convidar
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+                onClick={() => setIsFormGestorOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" /> Novo Gestor RH
+              </Button>
+              <Dialog open={dialogOpen} onOpenChange={open => { setDialogOpen(open); if (!open) setInviteLink('') }}>
+                <DialogTrigger render={<Button size="sm" className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" />}>
+                  <UserPlus className="w-4 h-4 mr-2" /> Convidar
+                </DialogTrigger>
               <DialogContent className="bg-card border-border">
                 <DialogHeader><DialogTitle>Convidar para a Equipe</DialogTitle></DialogHeader>
                 <form onSubmit={handleInvite} className="space-y-4">
@@ -149,6 +185,7 @@ export default function ConfiguracoesPage() {
                 )}
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -159,18 +196,19 @@ export default function ConfiguracoesPage() {
                 <TableHead>E-mail</TableHead>
                 <TableHead>Funcao</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     Carregando...
                   </TableCell>
                 </TableRow>
               ) : gestores.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                     Nenhum membro na equipe.
                   </TableCell>
                 </TableRow>
@@ -186,6 +224,26 @@ export default function ConfiguracoesPage() {
                       {g.ativo ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(g)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteClick(g.id)}
+                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -193,20 +251,46 @@ export default function ConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      {/* Tema */}
-      <Card className="bg-card border-border">
-        <CardHeader><CardTitle className="text-sm">Tema da Empresa</CardTitle></CardHeader>
-        <CardContent>
-          <Select value={tema} onValueChange={v => v && handleThemeChange(v as Tema)}>
-            <SelectTrigger className="w-48 bg-background"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dark">Dark</SelectItem>
-              <SelectItem value="clean">Clean</SelectItem>
-              <SelectItem value="auto">Auto</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+{isFormGestorOpen && user?.empresa_id && (
+        <FormGestorRH
+          empresaId={user.empresa_id}
+          onClose={() => {
+            setIsFormGestorOpen(false)
+            setSelectedGestor(null)
+          }}
+          onSaved={handleGestorSaved}
+          gestor={selectedGestor || undefined}
+        />
+      )}
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={open => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="bg-card border-border sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Remover Gestor RH</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Tem certeza que deseja remover este gestor? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmId(null)}
+              disabled={deleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-red-500 hover:bg-red-600"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? 'Removendo...' : 'Remover'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

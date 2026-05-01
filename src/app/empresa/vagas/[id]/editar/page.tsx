@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
+import { useCargosEDepartamentos } from '@/hooks/useCargosEDepartamentos'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { formatBRDateInput, formatDateToISO, formatDateToBR } from '@/lib/utils/date'
@@ -19,12 +21,14 @@ export default function EditarVagaPage() {
   const router = useRouter()
   const params = useParams()
   const vagaId = params.id as string
+  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(user?.empresa_id)
 
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [templates, setTemplates] = useState<TemplateTeste[]>([])
   const [form, setForm] = useState({
     titulo: '',
+    cargo: '',
     descricao: '',
     requisitos: '',
     categoria: '',
@@ -66,6 +70,7 @@ export default function EditarVagaPage() {
       if (data) {
         setForm({
           titulo: data.titulo || '',
+          cargo: data.cargo || '',
           descricao: data.descricao || '',
           requisitos: data.requisitos || '',
           categoria: data.categoria || '',
@@ -129,6 +134,7 @@ export default function EditarVagaPage() {
         .from('vagas')
         .update({
           titulo: form.titulo.trim(),
+          cargo: form.cargo?.trim() || null,
           descricao: form.descricao?.trim() || null,
           requisitos: form.requisitos?.trim() || null,
           categoria: form.categoria?.trim() || null,
@@ -195,17 +201,39 @@ export default function EditarVagaPage() {
                       onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                       required
                       className="bg-background"
-                      placeholder="Ex: Desenvolvedor Front-end Pleno"
+                      placeholder="Ex: Desenvolvedor Front-end Pleno (Sistemas de Infraestrutura)"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Categoria</Label>
-                    <Input
-                      value={form.categoria}
-                      onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-                      className="bg-background"
-                      placeholder="Ex: Tecnologia, Financeiro, Vendas"
-                    />
+                    <Label>Cargo
+                      {!cargosDeptLoading && cargos.length === 0 && (
+                        <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                      )}
+                    </Label>
+                    {cargosDeptLoading ? (
+                      <div className="h-10 bg-background rounded border border-border animate-pulse" />
+                    ) : cargos.length > 0 ? (
+                      <Select
+                        value={form.cargo}
+                        onValueChange={(val) => val !== null && setForm({ ...form, cargo: val })}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Selecione um cargo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cargos.map(cargo => (
+                            <SelectItem key={cargo.id} value={cargo.nome}>{cargo.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={form.cargo}
+                        onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                        className="bg-background"
+                        placeholder="Ex: Desenvolvedor, Engenheiro"
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -328,13 +356,35 @@ export default function EditarVagaPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Departamento/Setor</Label>
-                  <Input
-                    value={form.departamento}
-                    onChange={e => setForm({ ...form, departamento: e.target.value })}
-                    className="bg-background"
-                    placeholder="Ex: Engenharia, Comercial, RH"
-                  />
+                  <Label>Departamento/Setor
+                    {!cargosDeptLoading && departamentos.length === 0 && (
+                      <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                    )}
+                  </Label>
+                  {cargosDeptLoading ? (
+                    <div className="h-10 bg-background rounded border border-border animate-pulse" />
+                  ) : departamentos.length > 0 ? (
+                    <Select
+                      value={form.departamento}
+                      onValueChange={(val) => val !== null && setForm({ ...form, departamento: val })}
+                    >
+                      <SelectTrigger className="bg-background">
+                        <SelectValue placeholder="Selecione um departamento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departamentos.map(dept => (
+                          <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={form.departamento}
+                      onChange={(e) => setForm({ ...form, departamento: e.target.value })}
+                      className="bg-background"
+                      placeholder="Ex: Engenharia, Comercial, RH"
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

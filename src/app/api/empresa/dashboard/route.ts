@@ -11,51 +11,86 @@ export async function GET(request: NextRequest) {
   try {
     const db = createServerClient()
 
+    // Se for gestor_rh, buscar apenas seus setores
+    let setorIds: string[] = []
+    if (user.role === 'gestor_rh') {
+      const { rows } = await pool.query(
+        `SELECT cargos_departamento_id FROM gestor_rh_setores WHERE user_id = $1`,
+        [user.id]
+      )
+      setorIds = rows.map(r => r.cargos_departamento_id)
+    }
+
+    // Se for gestor_rh e não tem setores, retornar vazio
+    if (user.role === 'gestor_rh' && setorIds.length === 0) {
+      return NextResponse.json({
+        stats: { vagas: 0, candidatos: 0, colaboradores: 0, testes: 0, aprovados: 0, reprovados: 0 },
+        vagasData: [],
+      })
+    }
+
+    // Buscar nomes dos setores se for gestor_rh
+    let setorNomes: string[] = []
+    if (setorIds.length > 0) {
+      const { rows } = await pool.query(
+        `SELECT nome FROM cargos_departamentos WHERE id = ANY($1::uuid[])`,
+        [setorIds]
+      )
+      setorNomes = rows.map(r => r.nome)
+    }
+
     // Buscar vagas
-    const { data: vagas } = await db
-      .from('vagas')
-      .select('id, titulo')
-      .eq('empresa_id', user.empresa_id)
+    let vagasQuery = db.from('vagas').select('id, titulo, departamento').eq('empresa_id', user.empresa_id)
+    if (user.role === 'gestor_rh' && setorNomes.length > 0) {
+      vagasQuery = vagasQuery.in('departamento', setorNomes)
+    }
+    const { data: vagas } = await vagasQuery
 
     // Buscar candidatos com login
-    const { data: candidatos } = await db
-      .from('candidatos')
-      .select('id, vaga_id, status_candidatura')
-      .eq('empresa_id', user.empresa_id)
+    let candidatosQuery = db.from('candidatos').select('id, vaga_id, status_candidatura').eq('empresa_id', user.empresa_id)
+    const { data: candidatos } = await candidatosQuery
+
+    // Filtrar candidatos por vagas do gestor_rh
+    const vagaIds = vagas?.map(v => v.id) || []
+    const candidatosFiltrados = user.role === 'gestor_rh'
+      ? (candidatos || []).filter(c => vagaIds.includes(c.vaga_id))
+      : (candidatos || [])
 
     // Buscar colaboradores
-    const { data: colaboradores } = await db
-      .from('colaboradores')
-      .select('id')
-      .eq('empresa_id', user.empresa_id)
+    let colaboradoresQuery = db.from('colaboradores').select('id, departamento').eq('empresa_id', user.empresa_id)
+    const { data: colaboradores } = await colaboradoresQuery
+
+    // Filtrar colaboradores por setores do gestor_rh
+    const colaboradoresFiltrados = user.role === 'gestor_rh' && setorNomes.length > 0
+      ? (colaboradores || []).filter(c => c.departamento && setorNomes.includes(c.departamento))
+      : (colaboradores || [])
 
     // Buscar candidaturas públicas
+    const vagaIdList = vagaIds.length > 0 ? vagaIds : [null]
     const { rows: candidaturasPublicas } = await pool.query(
       `SELECT c.id, c.vaga_id, c.status
        FROM candidaturas c
        JOIN vagas v ON v.id = c.vaga_id
-       WHERE v.empresa_id = $1`,
-      [user.empresa_id]
+       WHERE v.empresa_id = $1 AND v.id = ANY($2::uuid[])`,
+      [user.empresa_id, vagaIdList]
     )
 
     const vagas_list = vagas || []
-    const candidatos_list = candidatos || []
-    const colaboradores_list = colaboradores || []
 
-    const aprovados = candidatos_list.filter(
+    const aprovados = candidatosFiltrados.filter(
       c => c.status_candidatura === 'aprovado' || c.status_candidatura === 'contratado'
     ).length
 
-    const reprovados = candidatos_list.filter(
+    const reprovados = candidatosFiltrados.filter(
       c => c.status_candidatura === 'reprovado'
     ).length
 
     // Total de candidatos (com login + públicos)
-    const totalCandidatos = candidatos_list.length + candidaturasPublicas.length
+    const totalCandidatos = candidatosFiltrados.length + candidaturasPublicas.length
 
     // Candidatos por vaga (com login + públicos)
     const vagasData = vagas_list.map(v => {
-      const comLogin = candidatos_list.filter(c => c.vaga_id === v.id).length
+      const comLogin = candidatosFiltrados.filter(c => c.vaga_id === v.id).length
       const publicos = candidaturasPublicas.filter(c => c.vaga_id === v.id).length
       return {
         id: v.id,
@@ -68,7 +103,7 @@ export async function GET(request: NextRequest) {
       stats: {
         vagas: vagas_list.length,
         candidatos: totalCandidatos,
-        colaboradores: colaboradores_list.length,
+        colaboradores: colaboradoresFiltrados.length,
         testes: 0,
         aprovados,
         reprovados,

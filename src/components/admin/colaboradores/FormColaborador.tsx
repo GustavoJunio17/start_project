@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { createClient } from "@/lib/db/client"
+import { useCargosEDepartamentos } from "@/hooks/useCargosEDepartamentos"
 import type { Colaborador, StatusColaborador, OrigemColaborador, Empresa, EscolaridadeColaborador } from "@/types/database"
 
 interface FormColaboradorProps {
@@ -17,9 +18,36 @@ interface FormColaboradorProps {
   onSaved: () => void
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  ativo: 'Ativo',
+  em_treinamento: 'Em Treinamento',
+  desligado: 'Desligado',
+}
+
+const MODELO_TRABALHO_LABELS: Record<string, string> = {
+  remoto: 'Remoto',
+  hibrido: 'Híbrido',
+  presencial: 'Presencial',
+}
+
+const REGIME_LABELS: Record<string, string> = {
+  CLT: 'CLT',
+  PJ: 'PJ',
+  Estagio: 'Estágio',
+  Freelance: 'Freelance',
+}
+
+const ESCOLARIDADE_LABELS: Record<string, string> = {
+  Medio: 'Médio',
+  Superior: 'Superior',
+  'Pos-graduado': 'Pós-graduado',
+}
+
 export function FormColaborador({ colaborador, empresas, onClose, onSaved }: FormColaboradorProps) {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+  const empresaId = colaborador?.empresa_id || (empresas.length > 0 ? empresas[0].id : '')
+  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(empresaId)
 
   const [formData, setFormData] = useState({
     nome: colaborador?.nome || '',
@@ -28,7 +56,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
     cpf: colaborador?.cpf || '',
     cargo: colaborador?.cargo || '',
     departamento: colaborador?.departamento || '',
-    empresa_id: colaborador?.empresa_id || (empresas.length > 0 ? empresas[0].id : ''),
+    empresa_id: empresaId,
     status: colaborador?.status || 'ativo' as StatusColaborador,
     origem: colaborador?.origem || 'contratacao_direta' as OrigemColaborador,
     data_contratacao: colaborador?.data_contratacao ? colaborador.data_contratacao.split('T')[0] : '',
@@ -173,21 +201,67 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Cargo / Função</label>
-                <Input
-                  value={formData.cargo}
-                  onChange={e => setFormData(f => ({...f, cargo: e.target.value}))}
-                  placeholder="Desenvolvedor"
-                />
+                <label className="text-xs font-medium text-muted-foreground">
+                  Cargo / Função
+                  {!cargosDeptLoading && cargos.length === 0 && (
+                    <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                  )}
+                </label>
+                {cargosDeptLoading ? (
+                  <div className="h-10 bg-card rounded border border-border animate-pulse" />
+                ) : cargos.length > 0 ? (
+                  <Select
+                    value={formData.cargo}
+                    onValueChange={(val) => val !== null && setFormData(f => ({...f, cargo: val}))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cargos.map(cargo => (
+                        <SelectItem key={cargo.id} value={cargo.nome}>{cargo.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={formData.cargo}
+                    onChange={e => setFormData(f => ({...f, cargo: e.target.value}))}
+                    placeholder="Desenvolvedora"
+                  />
+                )}
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Departamento/Setor</label>
-                <Input
-                  value={formData.departamento}
-                  onChange={e => setFormData(f => ({...f, departamento: e.target.value}))}
-                  placeholder="Engenharia, Design, Financeiro"
-                />
+                <label className="text-xs font-medium text-muted-foreground">
+                  Departamento/Setor
+                  {!cargosDeptLoading && departamentos.length === 0 && (
+                    <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                  )}
+                </label>
+                {cargosDeptLoading ? (
+                  <div className="h-10 bg-card rounded border border-border animate-pulse" />
+                ) : departamentos.length > 0 ? (
+                  <Select
+                    value={formData.departamento}
+                    onValueChange={(val) => val !== null && setFormData(f => ({...f, departamento: val}))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um departamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departamentos.map(dept => (
+                        <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={formData.departamento}
+                    onChange={e => setFormData(f => ({...f, departamento: e.target.value}))}
+                    placeholder="Engenharia, Design, Financeiro"
+                  />
+                )}
               </div>
 
               <div className="space-y-1">
@@ -197,7 +271,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
                   onValueChange={(val) => val !== null && setFormData(f => ({...f, status: val as StatusColaborador}))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um status" />
+                    <span>{STATUS_LABELS[formData.status] || 'Selecione um status'}</span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ativo">Ativo</SelectItem>
@@ -254,7 +328,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
                   onValueChange={(val) => val !== null && setFormData(f => ({...f, modelo_trabalho: val}))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <span>{MODELO_TRABALHO_LABELS[formData.modelo_trabalho] || 'Selecione'}</span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="remoto">Remoto</SelectItem>
@@ -271,7 +345,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
                   onValueChange={(val) => val !== null && setFormData(f => ({...f, regime_contrato: val}))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <span>{REGIME_LABELS[formData.regime_contrato] || 'Selecione'}</span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="CLT">CLT</SelectItem>
@@ -320,7 +394,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved }: For
                   onValueChange={(val) => val !== null && setFormData(f => ({...f, escolaridade: val as EscolaridadeColaborador}))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione" />
+                    <span>{ESCOLARIDADE_LABELS[formData.escolaridade] || 'Selecione'}</span>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Medio">Médio</SelectItem>

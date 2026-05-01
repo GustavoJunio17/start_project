@@ -7,7 +7,7 @@ import type { Role } from '@/types/database'
 type QueryType = 'select' | 'insert' | 'update' | 'delete'
 
 const SUPER: Role[] = ['super_admin', 'super_gestor']
-const ADMIN: Role[] = [...SUPER, 'user_empresa']
+const ADMIN: Role[] = [...SUPER, 'admin', 'user_empresa']
 const GESTOR: Role[] = [...ADMIN, 'gestor_rh']
 const ALL: Role[] = [...GESTOR, 'colaborador', 'candidato']
 
@@ -24,6 +24,7 @@ const POLICIES: Record<string, TablePolicy> = {
   vagas:               { read: ALL,    write: GESTOR,                   delete: GESTOR, tenanted: true  },
   candidatos:          { read: GESTOR, write: [...GESTOR, 'candidato'], delete: GESTOR, tenanted: true  },
   colaboradores:       { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
+  cargos_departamentos: { read: GESTOR, write: GESTOR,                  delete: GESTOR, tenanted: true  },
   questoes_disc:       { read: ALL,    write: ADMIN,                    delete: ADMIN,  tenanted: false },
   templates_testes:    { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
   respostas_teste:     { read: GESTOR, write: ALL,                      delete: ADMIN,  tenanted: true  },

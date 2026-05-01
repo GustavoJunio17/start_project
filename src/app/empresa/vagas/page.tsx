@@ -50,13 +50,17 @@ export default function VagasPage() {
 
   const loadVagas = async () => {
     if (!user?.empresa_id) return
-    const { data } = await supabase
-      .from('vagas')
-      .select('*')
-      .eq('empresa_id', user.empresa_id)
-      .order('created_at', { ascending: false })
-    setVagas(data || [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/empresa/vagas')
+      if (!res.ok) throw new Error('Failed to fetch')
+      const data = await res.json()
+      setVagas(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar vagas:', error)
+      setVagas([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { loadVagas() }, [user])

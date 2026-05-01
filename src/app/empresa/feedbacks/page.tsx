@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { QuadranteFeedback } from '@/components/feedback/QuadranteFeedback'
 import { Pagination } from '@/components/ui/pagination'
-import type { Feedback, Colaborador, Candidato, TipoFeedback } from '@/types/database'
+import type { Feedback, Colaborador, TipoFeedback } from '@/types/database'
 import { Plus, MessageSquare, StopCircle, Play, RefreshCw, Zap } from 'lucide-react'
 
 const supabase = createClient()
@@ -22,7 +22,7 @@ export default function FeedbacksPage() {
   const { user } = useAuth()
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
   const [colaboradores, setColaboradores] = useState<Pick<Colaborador, 'id' | 'nome'>[]>([])
-  const [candidatos, setCandidatos] = useState<Pick<Candidato, 'id' | 'nome_completo'>[]>([])
+  const [candidatos, setCandidatos] = useState<{ id: string; nome: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -37,11 +37,19 @@ export default function FeedbacksPage() {
       const [fbRes, colRes, candRes] = await Promise.all([
         supabase.from('feedbacks').select('*').eq('empresa_id', user!.empresa_id!).order('created_at', { ascending: false }),
         supabase.from('colaboradores').select('id, nome').eq('empresa_id', user!.empresa_id!),
-        supabase.from('candidatos').select('id, nome_completo').eq('empresa_id', user!.empresa_id!),
+        fetch('/api/candidaturas/empresa').then(r => r.json()),
       ])
       setFeedbacks(fbRes.data || [])
       setColaboradores(colRes.data || [])
-      setCandidatos(candRes.data || [])
+      // Deduplica por nome, preferindo entradas com candidato_id
+      const seen = new Map<string, { id: string; nome: string }>()
+      for (const c of (candRes as { id: string; nome: string; candidato_id?: string }[])) {
+        const key = c.nome.toLowerCase().trim()
+        if (!seen.has(key) || c.candidato_id) {
+          seen.set(key, { id: c.candidato_id ?? c.id, nome: c.nome })
+        }
+      }
+      setCandidatos(Array.from(seen.values()))
       setLoading(false)
     }
     load()
@@ -82,40 +90,55 @@ export default function FeedbacksPage() {
           <DialogTrigger render={<Button className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" />}>
             <Plus className="w-4 h-4 mr-2" /> Novo Feedback
           </DialogTrigger>
-          <DialogContent className="bg-card border-border max-w-2xl">
-            <DialogHeader><DialogTitle>Enviar Feedback</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1 space-y-2">
-                  <Label>Tipo</Label>
+          <DialogContent className="bg-card border-border sm:max-w-4xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg">Enviar Feedback</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Tipo</Label>
                   <Select value={tipo} onValueChange={v => { setTipo(v as TipoFeedback); setTargetId('') }}>
-                    <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="bg-background">
+                      <span>{tipo === 'interno_colaborador' ? 'Colaborador' : 'Candidato'}</span>
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="interno_colaborador">Colaborador</SelectItem>
                       <SelectItem value="externo_candidato">Candidato</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <Label>Destinatario</Label>
-                  <Select value={targetId} onValueChange={v => v && setTargetId(v)}>
-                    <SelectTrigger className="bg-background"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Destinatário</Label>
+                  <Select value={targetId} onValueChange={setTargetId}>
+                    <SelectTrigger className="bg-background">
+                      <span className={!targetId ? 'text-muted-foreground' : ''}>
+                        {targetId
+                          ? (tipo === 'interno_colaborador'
+                              ? colaboradores.find(c => c.id === targetId)?.nome
+                              : candidatos.find(c => c.id === targetId)?.nome) ?? 'Selecionar'
+                          : 'Selecionar'}
+                      </span>
+                    </SelectTrigger>
                     <SelectContent>
                       {tipo === 'interno_colaborador'
                         ? colaboradores.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
-                        : candidatos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome_completo}</SelectItem>)
+                        : candidatos.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
                       }
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               {tipo === 'externo_candidato' && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
                   <Switch checked={visivel} onCheckedChange={setVisivel} />
-                  <Label className="text-sm">Visivel para o candidato</Label>
+                  <Label className="text-sm font-medium">Visível para o candidato</Label>
                 </div>
               )}
-              <QuadranteFeedback onSubmit={handleSubmit} loading={saving} />
+              <div className="border-t border-border pt-4">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-semibold mb-4">Feedback em Quadrantes</p>
+                <QuadranteFeedback onSubmit={handleSubmit} loading={saving} />
+              </div>
             </div>
           </DialogContent>
         </Dialog>

@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (user.role !== 'user_empresa') {
+  const allowedRoles = ['admin', 'user_empresa', 'gestor_rh', 'super_admin', 'super_gestor']
+  if (!allowedRoles.includes(user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -16,7 +17,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       candidatura_id,
-      candidato_id,
       nome,
       email,
       data_contratacao,
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       salario,
     } = body
 
-    if (!candidatura_id || !candidato_id || !nome || !email) {
+    if (!candidatura_id || !nome || !email) {
       return NextResponse.json(
         { error: 'Dados obrigatórios faltando' },
         { status: 400 }

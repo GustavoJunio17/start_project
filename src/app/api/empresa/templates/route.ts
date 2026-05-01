@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   const db = createServerClient()
   const { data, error } = await db
-    .from('template_testes')
+    .from('templates_testes')
     .select('id, nome, descricao')
     .eq('empresa_id', user.empresa_id)
     .order('created_at', { ascending: false })

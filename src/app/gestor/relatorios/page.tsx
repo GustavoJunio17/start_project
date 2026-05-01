@@ -96,8 +96,8 @@ export default function RelatoriosGestorPage() {
 
   // Ordenar por match_score
   const topCandidatos = candidatosFiltrados
-    .filter(c => c.match_score !== null)
     .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
+    .filter(c => c.match_score !== null)
 
   if (loading) {
     return <div className="flex items-center justify-center h-96">Carregando...</div>
@@ -131,7 +131,7 @@ export default function RelatoriosGestorPage() {
       )}
 
       {/* Top 3 Melhores Candidatos do Setor */}
-      {topCandidatos.length >= 1 && (
+      {topCandidatos.length > 0 ? (
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-[#F59E0B]" /> Melhores Perfis do Setor
@@ -154,6 +154,12 @@ export default function RelatoriosGestorPage() {
             ))}
           </div>
         </div>
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nenhum candidato com avaliação encontrado para este setor.
+          </CardContent>
+        </Card>
       )}
 
       {/* Gráficos */}

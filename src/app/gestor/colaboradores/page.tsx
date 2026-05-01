@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,8 +12,6 @@ import { DISCChart, DISCBars } from '@/components/disc/DISCChart'
 import { Pagination } from '@/components/ui/pagination'
 import type { Colaborador, StatusColaborador } from '@/types/database'
 import { Search, Eye, AlertTriangle } from 'lucide-react'
-
-const supabase = createClient()
 
 const ITEMS_PER_PAGE = 20
 
@@ -35,12 +32,9 @@ export default function GestorColaboradoresPage() {
   useEffect(() => {
     if (!user?.empresa_id) return
     async function load() {
-      const { data } = await supabase
-        .from('colaboradores')
-        .select('*')
-        .eq('empresa_id', user!.empresa_id!)
-        .order('nome')
-      setColaboradores(data || [])
+      const res = await fetch('/api/empresa/colaboradores')
+      const data = res.ok ? await res.json() : []
+      setColaboradores(data)
       setLoading(false)
     }
     load()

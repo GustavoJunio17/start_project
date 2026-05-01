@@ -17,6 +17,12 @@ import { Search, Plus, Upload, MoreHorizontal, Edit, Trash } from 'lucide-react'
 
 const supabase = createClient()
 
+async function fetchColaboradores(): Promise<Colaborador[]> {
+  const res = await fetch('/api/empresa/colaboradores')
+  if (!res.ok) return []
+  return res.json()
+}
+
 const ITEMS_PER_PAGE = 20
 
 const STATUS_COLORS: Record<StatusColaborador, string> = {
@@ -45,12 +51,8 @@ export default function ColaboradoresPage() {
   const fetchData = async () => {
     if (!user?.empresa_id) return
     setLoading(true)
-    const { data } = await supabase
-      .from('colaboradores')
-      .select('*')
-      .eq('empresa_id', user.empresa_id)
-      .order('nome')
-    setColaboradores(data || [])
+    const data = await fetchColaboradores()
+    setColaboradores(data)
     setLoading(false)
   }
 

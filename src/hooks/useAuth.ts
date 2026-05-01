@@ -100,7 +100,7 @@ export function canManageRole(currentRole: Role, targetRole: Role): boolean {
 }
 
 export function isAdminRole(role: Role): boolean {
-  return role === 'super_admin' || role === 'super_gestor' || role === 'user_empresa'
+  return role === 'super_admin' || role === 'super_gestor'
 }
 
 export function getHomePath(role: Role): string {
@@ -108,6 +108,7 @@ export function getHomePath(role: Role): string {
     case 'super_admin':
     case 'super_gestor':
       return '/admin/dashboard'
+    case 'admin':
     case 'user_empresa':
     case 'gestor_rh':
       return '/empresa/dashboard'

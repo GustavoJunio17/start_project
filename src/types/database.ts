@@ -295,6 +295,14 @@ export interface Convite {
   created_at: string
 }
 
+export interface GestorRHSetor {
+  id: string
+  user_id: string
+  empresa_id: string
+  cargos_departamento_id: string
+  created_at: string
+}
+
 export interface Candidatura {
   id: string
   vaga_id: string

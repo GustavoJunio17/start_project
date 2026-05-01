@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { getHomePath } from '@/hooks/useAuth'
 
 export default function LoginPage() {
@@ -9,7 +8,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,12 +30,10 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect to appropriate path based on role
-      if (data.data?.role) {
-        router.push(getHomePath(data.data.role))
-      } else {
-        router.push('/redirect')
-      }
+      // Hard redirect so the browser sends the newly-set cookie on the next request.
+      // router.push() can miss the cookie in Next.js App Router RSC cache.
+      const destination = data.data?.role ? getHomePath(data.data.role) : '/redirect'
+      window.location.href = destination
     } catch {
       setError('Erro de conexão')
       setLoading(false)

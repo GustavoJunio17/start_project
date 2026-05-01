@@ -62,6 +62,7 @@ export default function RelatoriosPage() {
       }
 
       setCandidatos(allCandidatos)
+      console.log('Candidatos carregados:', allCandidatos.length, allCandidatos.slice(0, 2))
 
       // Calcular distribuição de status e classificação
       const statusMap: Record<string, number> = {}
@@ -89,8 +90,8 @@ export default function RelatoriosPage() {
 
   // Ordenar por match_score (melhores perfis)
   const topCandidatos = candidatosFiltrados
-    .filter(c => c.match_score !== null)
     .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
+    .filter(c => c.match_score !== null)
 
   return (
     <div className="space-y-6">
@@ -120,7 +121,7 @@ export default function RelatoriosPage() {
       )}
 
       {/* Top 3 Melhores Candidatos */}
-      {topCandidatos.length >= 1 && (
+      {topCandidatos.length > 0 ? (
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <Star className="w-5 h-5 text-[#F59E0B]" /> Melhores Perfis
@@ -143,6 +144,12 @@ export default function RelatoriosPage() {
             ))}
           </div>
         </div>
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nenhum candidato com avaliação encontrado.
+          </CardContent>
+        </Card>
       )}
 
       {/* Gráficos */}

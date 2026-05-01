@@ -3,6 +3,7 @@ import pool from './pool'
 // Allowed tables to prevent SQL injection via table name
 const ALLOWED_TABLES = new Set([
   'users', 'empresas', 'vagas', 'candidatos', 'colaboradores',
+  'cargos_departamentos',
   'questoes_disc', 'templates_testes', 'respostas_teste', 'feedbacks', 'agendamentos',
   'pdis', 'onboardings', 'treinamentos_ia', 'notificacoes_vaga',
   'alertas_automaticos', 'convites',

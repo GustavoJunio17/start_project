@@ -11,12 +11,15 @@ services:
       POSTGRES_PASSWORD: startpro123
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro,Z
+      - ./database/migrations:/migrations:ro,Z
+      - ./database/migrate.sh:/migrate.sh:ro,Z
+      - ./database/postgres-startup.sh:/postgres-startup.sh:ro,Z
+    entrypoint: ["sh", "/postgres-startup.sh"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U startpro -d startpro"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
 volumes:
   pgdata:

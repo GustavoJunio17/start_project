@@ -10,6 +10,7 @@
     "migrate": "node scripts/migrate-status-vaga.js",
     "migrate:templates": "node scripts/migrate-templates.js",
     "migrate:vagas": "node scripts/migrate-vaga-fields.js",
+    "migrate:cargos": "node scripts/migrate-cargos-departamentos.js",
     "seed:disc": "node scripts/seed-disc-templates.js",
     "verify:disc": "node scripts/verify-disc-templates.js"
   },
