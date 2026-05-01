@@ -27,7 +27,7 @@ const POLICIES: Record<string, TablePolicy> = {
   cargos_departamentos: { read: ALL,    write: GESTOR,                  delete: GESTOR, tenanted: true  },
   questoes_disc:       { read: ALL,    write: ADMIN,                    delete: ADMIN,  tenanted: false },
   templates_testes:    { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
-  respostas_teste:     { read: GESTOR, write: ALL,                      delete: ADMIN,  tenanted: true  },
+  respostas_teste:     { read: ALL,    write: ALL,                      delete: ADMIN,  tenanted: false },
   feedbacks:           { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
   agendamentos:        { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
   pdis:                { read: GESTOR, write: GESTOR,                   delete: GESTOR, tenanted: true  },
