@@ -19,7 +19,7 @@ interface CandidatoComVaga extends Candidato {
   vaga?: Vaga | null
 }
 
-export default function RelatoriosPage() {
+export default function RelatoriosGestorPage() {
   const { user } = useAuth()
   const [data, setData] = useState<{
     statusDist: { name: string; value: number }[]
@@ -28,80 +28,91 @@ export default function RelatoriosPage() {
   const [candidatos, setCandidatos] = useState<CandidatoComVaga[]>([])
   const [setores, setSetores] = useState<{ id: string; nome: string }[]>([])
   const [setorSelecionado, setSetorSelecionado] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!user?.empresa_id) return
+    if (!user?.empresa_id || user.role !== 'gestor_rh') return
+
     async function load() {
-      // Carregar dados de candidatos
+      // Carregar setores do gestor
+      const { data: gestorSetores } = await supabase
+        .from('gestor_rh_setores')
+        .select('cargos_departamento_id')
+        .eq('user_id', user.id!)
+
+      if (!gestorSetores || gestorSetores.length === 0) {
+        setLoading(false)
+        return
+      }
+
+      const setorIds = gestorSetores.map(g => g.cargos_departamento_id)
+
+      const { data: setoresData } = await supabase
+        .from('cargos_departamentos')
+        .select('id, nome')
+        .in('id', setorIds)
+
+      if (setoresData) {
+        setSetores(setoresData)
+        if (setoresData.length > 0) setSetorSelecionado(setoresData[0].id)
+      }
+
+      // Carregar candidatos da empresa
       const { data: allCandidatos } = await supabase
         .from('candidatos')
         .select('*, vaga:vagas(titulo, departamento)')
         .eq('empresa_id', user!.empresa_id!)
 
-      if (!allCandidatos) return
+      if (allCandidatos) {
+        setCandidatos(allCandidatos)
 
-      // Se for gestor RH, carregar seus setores
-      if (user.role === 'gestor_rh') {
-        const { data: gestorSetores } = await supabase
-          .from('gestor_rh_setores')
-          .select('cargos_departamento_id')
-          .eq('user_id', user.id!)
+        // Calcular distribuição
+        const statusMap: Record<string, number> = {}
+        const classifMap: Record<string, number> = {}
+        allCandidatos.forEach(c => {
+          statusMap[c.status_candidatura] = (statusMap[c.status_candidatura] || 0) + 1
+          if (c.classificacao) classifMap[c.classificacao] = (classifMap[c.classificacao] || 0) + 1
+        })
 
-        if (gestorSetores && gestorSetores.length > 0) {
-          const setorIds = gestorSetores.map(g => g.cargos_departamento_id)
-          const { data: setoresData } = await supabase
-            .from('cargos_departamentos')
-            .select('id, nome')
-            .in('id', setorIds)
-
-          if (setoresData) {
-            setSetores(setoresData)
-            if (setoresData.length > 0) setSetorSelecionado(setoresData[0].id)
-          }
-        }
+        setData({
+          statusDist: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
+          classifDist: Object.entries(classifMap).map(([name, value]) => ({ name, value })),
+        })
       }
 
-      setCandidatos(allCandidatos)
-
-      // Calcular distribuição de status e classificação
-      const statusMap: Record<string, number> = {}
-      const classifMap: Record<string, number> = {}
-      allCandidatos.forEach(c => {
-        statusMap[c.status_candidatura] = (statusMap[c.status_candidatura] || 0) + 1
-        if (c.classificacao) classifMap[c.classificacao] = (classifMap[c.classificacao] || 0) + 1
-      })
-
-      setData({
-        statusDist: Object.entries(statusMap).map(([name, value]) => ({ name, value })),
-        classifDist: Object.entries(classifMap).map(([name, value]) => ({ name, value })),
-      })
+      setLoading(false)
     }
+
     load()
   }, [user])
 
-  // Filtrar candidatos por setor se gestor RH
-  const candidatosFiltrados = user?.role === 'gestor_rh' && setorSelecionado
+  // Filtrar candidatos por setor selecionado
+  const candidatosFiltrados = setorSelecionado
     ? candidatos.filter(c => {
         const vagaDept = c.vaga?.departamento
         return setores.some(s => s.id === setorSelecionado && s.nome === vagaDept)
       })
     : candidatos
 
-  // Ordenar por match_score (melhores perfis)
+  // Ordenar por match_score
   const topCandidatos = candidatosFiltrados
     .filter(c => c.match_score !== null)
     .sort((a, b) => (b.match_score || 0) - (a.match_score || 0))
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-96">Carregando...</div>
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-        <BarChart3 className="w-6 h-6 text-[#00D4FF]" /> Relatórios
+        <BarChart3 className="w-6 h-6 text-[#00D4FF]" /> Relatórios de Desempenho
       </h1>
 
-      {/* Filtro por Setor para Gestor RH */}
-      {user?.role === 'gestor_rh' && setores.length > 0 && (
+      {/* Filtro por Setor */}
+      {setores.length > 0 && (
         <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Filter className="w-4 h-4" /> Filtrar por Setor</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Filter className="w-4 h-4" /> Meus Setores</CardTitle></CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {setores.map(setor => (
@@ -119,11 +130,11 @@ export default function RelatoriosPage() {
         </Card>
       )}
 
-      {/* Top 3 Melhores Candidatos */}
+      {/* Top 3 Melhores Candidatos do Setor */}
       {topCandidatos.length >= 1 && (
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-[#F59E0B]" /> Melhores Perfis
+            <Star className="w-5 h-5 text-[#F59E0B]" /> Melhores Perfis do Setor
           </h2>
           <div className={`grid ${topCandidatos.length >= 3 ? 'grid-cols-3' : topCandidatos.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
             {topCandidatos.slice(0, 3).map((c, i) => (
@@ -178,9 +189,9 @@ export default function RelatoriosPage() {
       </div>
 
       {/* Ranking Completo */}
-      {topCandidatos.length > 3 && (
+      {topCandidatos.length > 0 && (
         <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-sm">Ranking de Candidatos</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Ranking Completo</CardTitle></CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -211,6 +222,14 @@ export default function RelatoriosPage() {
                 ))}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {topCandidatos.length === 0 && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center text-muted-foreground">
+            Nenhum candidato com avaliação encontrado para este setor.
           </CardContent>
         </Card>
       )}

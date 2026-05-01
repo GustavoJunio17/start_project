@@ -26,6 +26,7 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  Layers,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -50,9 +51,15 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
     { label: 'Usuarios', href: '/admin/usuarios', icon: <Users className="w-5 h-5" /> },
   ],
   admin: [
-    { label: 'Dashboard', href: '/admin/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { label: 'Empresas', href: '/admin/empresas', icon: <Building2 className="w-5 h-5" /> },
-    { label: 'Usuarios', href: '/admin/usuarios', icon: <Users className="w-5 h-5" /> },
+    { label: 'Dashboard', href: '/empresa/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { label: 'Vagas', href: '/empresa/vagas', icon: <Briefcase className="w-5 h-5" /> },
+    { label: 'Candidatos', href: '/empresa/candidatos', icon: <Users className="w-5 h-5" /> },
+    { label: 'Colaboradores', href: '/empresa/colaboradores', icon: <UserCheck className="w-5 h-5" /> },
+    { label: 'Cargos e Departamentos', href: '/empresa/configuracoes/cargos-departamentos', icon: <Layers className="w-5 h-5" /> },
+    { label: 'Testes', href: '/empresa/testes', icon: <ClipboardList className="w-5 h-5" /> },
+    { label: 'Feedbacks', href: '/empresa/feedbacks', icon: <MessageSquare className="w-5 h-5" /> },
+    { label: 'Configuracoes', href: '/empresa/configuracoes', icon: <Shield className="w-5 h-5" /> },
+    { label: 'Relatorios', href: '/empresa/relatorios', icon: <BarChart3 className="w-5 h-5" /> },
   ],
   gestor_rh: [
     { label: 'Dashboard', href: '/empresa/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -68,6 +75,7 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
     { label: 'Vagas', href: '/empresa/vagas', icon: <Briefcase className="w-5 h-5" /> },
     { label: 'Candidatos', href: '/empresa/candidatos', icon: <Users className="w-5 h-5" /> },
     { label: 'Colaboradores', href: '/empresa/colaboradores', icon: <UserCheck className="w-5 h-5" /> },
+    { label: 'Cargos e Departamentos', href: '/empresa/configuracoes/cargos-departamentos', icon: <Layers className="w-5 h-5" /> },
     { label: 'Testes', href: '/empresa/testes', icon: <ClipboardList className="w-5 h-5" /> },
     { label: 'Feedbacks', href: '/empresa/feedbacks', icon: <MessageSquare className="w-5 h-5" /> },
     { label: 'Configuracoes', href: '/empresa/configuracoes', icon: <Shield className="w-5 h-5" /> },
@@ -82,6 +90,7 @@ const NAV_ITEMS: Record<Role, NavItem[]> = {
     { label: 'Agendamentos', href: '/gestor/candidatos', icon: <Calendar className="w-5 h-5" /> },
     { label: 'Onboarding', href: '/gestor/onboarding', icon: <GraduationCap className="w-5 h-5" /> },
     { label: 'Ranking', href: '/gestor/ranking', icon: <Star className="w-5 h-5" /> },
+    { label: 'Relatórios', href: '/gestor/relatorios', icon: <BarChart3 className="w-5 h-5" /> },
     { label: 'Reavaliacao', href: '/gestor/reavaliacao', icon: <Target className="w-5 h-5" /> },
   ],
   candidato: [
@@ -103,6 +112,20 @@ export function Sidebar() {
   if (!user) return null
 
   const items = NAV_ITEMS[user.role] || []
+
+  const isItemActive = (itemHref: string) => {
+    // Check exact match first
+    if (pathname === itemHref) return true
+    // Check if pathname starts with item href + '/' but exclude parent routes
+    if (pathname.startsWith(itemHref + '/')) {
+      // For /empresa/configuracoes, only match if the item is /empresa/configuracoes
+      // and not if navigating to /empresa/configuracoes/cargos-departamentos
+      const exactMatch = items.some(i => i.href === pathname)
+      if (exactMatch && pathname !== itemHref) return false
+      return true
+    }
+    return false
+  }
 
   return (
     <>
@@ -158,7 +181,7 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-2">
             {items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              const isActive = isItemActive(item.href)
               return (
                 <li key={item.href}>
                   <Link
