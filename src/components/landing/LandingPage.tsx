@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Zap, Brain, Building2, Sparkles, ArrowRight,
   CheckCircle, Users, TrendingUp, Award, Shield,
-  MessageCircle, BarChart3, Target, Rocket, Clock,
+  MessageCircle, BarChart3, Target, Rocket, Menu, X,
 } from 'lucide-react'
 
 interface Props {
@@ -118,37 +118,48 @@ const PLANS = [
 
 export default function LandingPage({ whatsapp }: Props) {
   const root = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const wa = (msg: string) =>
     `https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`
 
   useEffect(() => {
-    import('gsap').then(({ gsap }) => {
-      import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
+    let mounted = true
+    const loadGsap = async () => {
+      try {
+        const { gsap } = await import('gsap')
+        const { ScrollTrigger } = await import('gsap/ScrollTrigger')
         gsap.registerPlugin(ScrollTrigger)
 
         const ctx = gsap.context(() => {
-          // Reveal on scroll elements
           const elements = root.current?.querySelectorAll('.reveal-on-scroll')
           elements?.forEach((el) => {
-            gsap.fromTo(el,
-              { opacity: 0, y: 30, scale: 0.98 },
-              {
-                opacity: 1, y: 0, scale: 1,
-                duration: 1,
-                ease: 'power3.out',
-                scrollTrigger: {
-                  trigger: el,
-                  start: 'top 88%',
-                  toggleActions: 'play none none none'
+            if (mounted) {
+              gsap.fromTo(el,
+                { opacity: 0, y: 20, scale: 0.98 },
+                {
+                  opacity: 1, y: 0, scale: 1,
+                  duration: 0.5,
+                  ease: 'power2.out',
+                  scrollTrigger: {
+                    trigger: el,
+                    start: 'top 85%',
+                    toggleActions: 'play none none none',
+                    once: true,
+                  }
                 }
-              }
-            )
+              )
+            }
           })
         }, root)
         return () => ctx.revert()
-      })
-    })
+      } catch (e) {
+        console.warn('GSAP animations unavailable, using CSS fallback')
+      }
+    }
+
+    loadGsap()
+    return () => { mounted = false }
   }, [])
 
   return (
@@ -156,9 +167,9 @@ export default function LandingPage({ whatsapp }: Props) {
 
       {/* ── Ambient background ── */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute top-[10%] left-[20%] w-[30vw] h-[30vw] rounded-full bg-[#00D4FF]/5 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
-        <div className="absolute bottom-[20%] right-[10%] w-[40vw] h-[40vw] rounded-full bg-[#7B2FFF]/5 blur-[120px] animate-pulse" style={{ animationDuration: '12s' }} />
-        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[20vw] h-[20vw] rounded-full bg-[#0066FF]/5 blur-[100px] animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute top-[10%] left-[20%] w-[30vw] h-[30vw] rounded-full bg-[#00D4FF]/5 blur-[120px] animate-pulse" style={{ animationDuration: '5s' }} />
+        <div className="absolute bottom-[20%] right-[10%] w-[40vw] h-[40vw] rounded-full bg-[#7B2FFF]/5 blur-[120px] animate-pulse" style={{ animationDuration: '6.5s' }} />
+        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[20vw] h-[20vw] rounded-full bg-[#0066FF]/5 blur-[100px] animate-pulse" style={{ animationDuration: '7s' }} />
         <div className="lp-dot-grid" />
         <div
           className="absolute inset-0"
@@ -170,9 +181,9 @@ export default function LandingPage({ whatsapp }: Props) {
       </div>
 
       {/* ── Header ── */}
-      <header className="lp-header fixed top-0 left-0 right-0 z-50 px-6 pt-4 animate-in fade-in slide-in-from-top-4 duration-700 ease-out">
+      <header className="lp-header fixed top-0 left-0 right-0 z-50 px-6 pt-4 animate-in fade-in slide-in-from-top-4 duration-500 ease-out">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-2xl px-6 py-3.5">
+          <div className="flex items-center justify-between gap-4 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-2xl px-6 py-3.5">
 
             {/* Logo */}
             <div className="flex items-center gap-2.5">
@@ -185,7 +196,7 @@ export default function LandingPage({ whatsapp }: Props) {
               </span>
             </div>
 
-            {/* Nav — truly centered */}
+            {/* Nav — desktop */}
             <nav className="hidden md:flex items-center gap-7">
               {[
                 { label: 'Vagas',    href: '/vagas' },
@@ -203,9 +214,9 @@ export default function LandingPage({ whatsapp }: Props) {
               ))}
             </nav>
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-2">
-              <Link href="/auth/login" className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5">
+            {/* Actions — desktop */}
+            <div className="hidden md:flex items-center gap-2">
+              <Link href="/auth/login" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5">
                 Entrar
               </Link>
               <Link
@@ -217,7 +228,49 @@ export default function LandingPage({ whatsapp }: Props) {
               </Link>
             </div>
 
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
+              aria-label="Menu"
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
+
+          {/* Mobile menu */}
+          {menuOpen && (
+            <div className="md:hidden mt-4 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-2xl px-6 py-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <nav className="flex flex-col gap-4 mb-4">
+                {[
+                  { label: 'Vagas',    href: '/vagas' },
+                  { label: 'Recursos', href: '#features' },
+                  { label: 'Planos',   href: '#plans' },
+                ].map((l) => (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {l.label}
+                  </a>
+                ))}
+              </nav>
+              <div className="flex flex-col gap-2 border-t border-white/[0.08] pt-4">
+                <Link href="/auth/login" className="text-sm text-gray-400 hover:text-white transition-colors py-2">
+                  Entrar
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="lp-btn-primary flex items-center justify-center gap-1.5 px-4 py-2 text-sm bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold w-full"
+                >
+                  Começar
+                  <ArrowRight size={13} />
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -226,24 +279,24 @@ export default function LandingPage({ whatsapp }: Props) {
         {/* ── Hero ── */}
         <section className="flex flex-col items-center justify-center min-h-screen px-6 pt-28 pb-24 text-center">
 
-          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out hero-badge mb-7 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/25 bg-[#00D4FF]/[0.06] text-[#00D4FF] text-sm font-medium">
+          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out hero-badge mb-7 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#00D4FF]/25 bg-[#00D4FF]/[0.06] text-[#00D4FF] text-sm font-medium">
             <Sparkles size={13} />
             Plataforma de recrutamento com IA
           </div>
 
-          <h1 className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-100 ease-out hero-title max-w-5xl text-5xl sm:text-6xl md:text-[74px] font-bold leading-[1.06] tracking-tight mb-6">
+          <h1 className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out hero-title max-w-5xl text-5xl sm:text-6xl md:text-[74px] font-bold leading-[1.06] tracking-tight mb-6">
             Encontre os{' '}
             <span className="lp-shimmer">talentos ideais</span>
             <br />para sua empresa
           </h1>
 
-          <p className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-200 ease-out hero-sub max-w-xl text-lg text-gray-400 leading-relaxed mb-10">
+          <p className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out hero-sub max-w-xl text-lg text-gray-400 leading-relaxed mb-10">
             Avaliação DISC, testes técnicos e ranking por IA.
             <br className="hidden sm:block" />
             Contrate com precisão, em menos tempo.
           </p>
 
-          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-300 ease-out hero-ctas flex flex-col sm:flex-row gap-3 mb-20">
+          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out hero-ctas flex flex-col sm:flex-row gap-3 mb-20">
             <Link
               href="/auth/register"
               className="lp-btn-primary group flex items-center justify-center gap-2 px-7 py-4 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-xl font-semibold text-[15px]"
@@ -269,7 +322,7 @@ export default function LandingPage({ whatsapp }: Props) {
           </div>
 
           {/* Stats */}
-          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-500 ease-out grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-3xl">
+          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out grid grid-cols-2 md:grid-cols-4 gap-3 w-full max-w-3xl">
             {[
               { icon: Building2,   val: '500+',  lbl: 'Empresas ativas' },
               { icon: Users,       val: '12k+',  lbl: 'Candidatos avaliados' },
@@ -293,7 +346,7 @@ export default function LandingPage({ whatsapp }: Props) {
         {/* ── Features ── */}
         <section id="features" className="features-section py-28 px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out sec-hd text-center mb-16">
+            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out sec-hd text-center mb-16">
               <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#00D4FF] mb-3">Recursos</p>
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
                 Tudo que você precisa para contratar melhor
@@ -309,8 +362,7 @@ export default function LandingPage({ whatsapp }: Props) {
                 return (
                   <div
                     key={f.title}
-                    className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out feat-card group relative flex flex-col p-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] overflow-hidden cursor-default"
-                    style={{ transitionDelay: `${idx * 100}ms` }}
+                    className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out feat-card group relative flex flex-col p-6 rounded-2xl border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] overflow-hidden cursor-default"
                   >
                     <div
                       className="absolute top-0 inset-x-0 h-px"
@@ -338,7 +390,7 @@ export default function LandingPage({ whatsapp }: Props) {
         {/* ── Como funciona ── */}
         <section className="steps-section py-28 px-6">
           <div className="max-w-5xl mx-auto">
-            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out text-center mb-16">
+            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out text-center mb-16">
               <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#00D4FF] mb-3">
                 Como funciona
               </p>
@@ -356,8 +408,7 @@ export default function LandingPage({ whatsapp }: Props) {
                 return (
                   <div
                     key={s.n}
-                    className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out step-item group flex gap-5 p-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04] hover:border-[#00D4FF]/15"
-                    style={{ transitionDelay: `${idx * 100}ms` }}
+                    className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out step-item group flex gap-5 p-6 rounded-2xl border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.04] hover:border-[#00D4FF]/15"
                   >
                     <div className="shrink-0">
                       <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#00D4FF]/15 to-[#0066FF]/15 border border-[#00D4FF]/20 flex items-center justify-center group-hover:border-[#00D4FF]/40 group-hover:from-[#00D4FF]/20 group-hover:to-[#0066FF]/20 transition-all duration-300">
@@ -379,7 +430,7 @@ export default function LandingPage({ whatsapp }: Props) {
         {/* ── Planos ── */}
         <section id="plans" className="plans-section py-28 px-6">
           <div className="max-w-6xl mx-auto">
-            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out plan-hd text-center mb-16">
+            <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out plan-hd text-center mb-16">
               <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#00D4FF] mb-3">Planos</p>
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">
                 Invista no melhor recrutamento
@@ -393,12 +444,11 @@ export default function LandingPage({ whatsapp }: Props) {
               {PLANS.map((p, idx) => (
                 <div
                   key={p.name}
-                  className={`reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out plan-card relative flex flex-col rounded-2xl border overflow-hidden hover:-translate-y-1 ${
+                  className={`reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out plan-card relative flex flex-col rounded-2xl border overflow-hidden hover:-translate-y-1 ${
                     p.highlight
                       ? 'border-[#00D4FF]/40 bg-gradient-to-b from-[#00D4FF]/[0.08] to-[#0066FF]/[0.04] shadow-2xl shadow-[#00D4FF]/10'
                       : 'border-white/[0.07] bg-white/[0.025]'
                   }`}
-                  style={{ transitionDelay: `${idx * 150}ms` }}
                 >
                   {p.highlight && (
                     <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#00D4FF] to-transparent" />
@@ -456,7 +506,7 @@ export default function LandingPage({ whatsapp }: Props) {
 
         {/* ── CTA Empresa ── */}
         <section className="contact-section py-28 px-6">
-          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out max-w-3xl mx-auto text-center">
+          <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out max-w-3xl mx-auto text-center">
             <div className="contact-inner relative flex flex-col items-center p-10 md:p-14 rounded-3xl border border-[#00D4FF]/15 bg-gradient-to-b from-[#00D4FF]/[0.06] to-transparent overflow-hidden">
               <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#00D4FF]/45 to-transparent" />
               <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#0066FF]/25 to-transparent" />
@@ -503,7 +553,7 @@ export default function LandingPage({ whatsapp }: Props) {
 
       {/* ── Footer ── */}
       <footer className="lp-footer relative z-10 border-t border-white/[0.05] py-8">
-        <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 ease-out max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center">
               <Zap size={12} className="text-white" />

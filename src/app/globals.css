@@ -407,7 +407,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: lp-shimmer 5s linear infinite;
+  animation: lp-shimmer 3.5s linear infinite;
 }
 
 /* Landing CTA buttons */
