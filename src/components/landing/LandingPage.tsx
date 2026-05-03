@@ -553,7 +553,7 @@ export default function LandingPage({ whatsapp }: Props) {
 
       {/* ── Footer ── */}
       <footer className="lp-footer relative z-10 border-t border-white/[0.05] py-8">
-        <div className="reveal-on-scroll opacity-0 translate-y-8 transition-all duration-500 ease-out max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center">
               <Zap size={12} className="text-white" />
