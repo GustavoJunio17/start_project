@@ -8,9 +8,10 @@ import {
   validarSenha,
   validarNomeEmpresa,
   areasAtuacao,
-  formatarCNPJ,
   planosInfo,
 } from '@/lib/validations/empresa'
+import { maskPhone, maskCNPJ } from '@/lib/utils/masks'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 import { useRouter } from 'next/navigation'
 
 export function FormCadastroEmpresa() {
@@ -56,25 +57,12 @@ export function FormCadastroEmpresa() {
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target
 
-    // Formatar CNPJ enquanto digita
-    if (name === 'cnpj') {
-      const cleaned = value.replace(/\D/g, '')
-      if (cleaned.length <= 14) {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: cleaned,
-        }))
-        return
-      }
-      return
-    }
+    let newValue = value
+    if (name === 'cnpj') newValue = maskCNPJ(value)
+    else if (name === 'telefone') newValue = maskPhone(value)
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    setFormData((prev) => ({ ...prev, [name]: newValue }))
 
-    // Limpar erro do campo quando usuário começa a digitar
     if (errosValidacao[name]) {
       setErrosValidacao((prev) => {
         const novo = { ...prev }
@@ -91,7 +79,7 @@ export function FormCadastroEmpresa() {
       novosErros.nome = 'Nome deve ter entre 3 e 100 caracteres'
     }
 
-    if (!formData.cnpj || !validarCNPJ(formData.cnpj)) {
+    if (!formData.cnpj || !validarCNPJ(formData.cnpj.replace(/\D/g, ''))) {
       novosErros.cnpj = 'CNPJ inválido'
     }
 
@@ -116,7 +104,8 @@ export function FormCadastroEmpresa() {
       novosErros.email_contato = 'Email de contato inválido'
     }
 
-    if (formData.telefone && !/^\d{10,11}$/.test(formData.telefone.replace(/\D/g, ''))) {
+    const telDigits = formData.telefone.replace(/\D/g, '')
+    if (formData.telefone && !/^\d{10,11}$/.test(telDigits)) {
       novosErros.telefone = 'Telefone deve ter 10 ou 11 dígitos'
     }
 
@@ -139,7 +128,11 @@ export function FormCadastroEmpresa() {
       const response = await fetch('/api/admin/empresas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          cnpj: formData.cnpj.replace(/\D/g, ''),
+          telefone: formData.telefone.replace(/\D/g, ''),
+        }),
       })
 
       const resultado = await response.json()
@@ -215,13 +208,10 @@ export function FormCadastroEmpresa() {
               <input
                 type="text"
                 name="cnpj"
-                value={
-                  formData.cnpj.length > 0
-                    ? formatarCNPJ(formData.cnpj)
-                    : ''
-                }
+                value={formData.cnpj}
                 onChange={handleChange}
                 placeholder="00.000.000/0000-00"
+                inputMode="numeric"
                 maxLength={18}
                 className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
                   errosValidacao.cnpj ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
@@ -331,9 +321,7 @@ export function FormCadastroEmpresa() {
             {errosValidacao.senha_admin && (
               <p className="text-destructive text-sm mt-1">{errosValidacao.senha_admin}</p>
             )}
-            <p className="text-gray-400 text-xs mt-1">
-              Deve conter: maiúsculas, minúsculas, números e no mínimo 8 caracteres
-            </p>
+            <PasswordStrength password={formData.senha_admin} />
           </div>
 
           {/* Linha 6: Email de Contato */}
@@ -365,16 +353,9 @@ export function FormCadastroEmpresa() {
               type="tel"
               name="telefone"
               value={formData.telefone}
-              onChange={(e) => {
-                const cleaned = e.target.value.replace(/\D/g, '')
-                if (cleaned.length <= 11) {
-                  setFormData((prev) => ({
-                    ...prev,
-                    telefone: cleaned,
-                  }))
-                }
-              }}
+              onChange={handleChange}
               placeholder="(11) 99999-9999"
+              inputMode="numeric"
               className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
                 errosValidacao.telefone ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}

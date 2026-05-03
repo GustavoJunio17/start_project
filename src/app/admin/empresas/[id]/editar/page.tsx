@@ -26,15 +26,6 @@ export default function EditarEmpresaPage() {
 
   const empresaId = Array.isArray(params.id) ? params.id[0] : params.id
 
-  // Verificar permissão
-  if (!authLoading && (!user || (user.role !== 'super_admin' && user.role !== 'super_gestor'))) {
-    return (
-      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive">
-        Apenas super_admin e super_gestor podem acessar esta página
-      </div>
-    )
-  }
-
   // Carregar empresa
   useEffect(() => {
     async function carregar() {
@@ -107,6 +98,14 @@ export default function EditarEmpresaPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  if (!authLoading && (!user || (user.role !== 'super_admin' && user.role !== 'super_gestor'))) {
+    return (
+      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive">
+        Apenas super_admin e super_gestor podem acessar esta página
+      </div>
+    )
   }
 
   if (authLoading || loading) {

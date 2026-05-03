@@ -256,7 +256,6 @@ function LoginForm() {
           <div className="links">
             <p>Candidato? <a href={registerHref}>Cadastre-se</a></p>
             <p><a href="/auth/forgot-password">Esqueceu a senha?</a></p>
-            <p>Super Admin? <a href="/setup-admin">Setup</a></p>
           </div>
         </div>
       </div>

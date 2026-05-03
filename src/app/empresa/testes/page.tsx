@@ -9,6 +9,48 @@ import { ClipboardList, Plus, Trash2, Package, Edit2 } from 'lucide-react'
 
 const supabase = createClient()
 
+type ResultRow = RespostaTeste & { candidato?: { nome_completo: string }; colaborador?: { nome: string } }
+
+function ResultsTable({ data, label, loading }: { data: ResultRow[]; label: string; loading: boolean }) {
+  return (
+    <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+      <div className="px-4 py-3 border-b border-[#1e2a5e]">
+        <p className="text-sm font-semibold text-white">Resultados - {label}</p>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#1e2a5e]">
+            {['Nome', 'Tipo', 'Score', 'Duração', 'Data'].map(h => (
+              <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr><td colSpan={5} className="text-center py-8 text-gray-500">Carregando...</td></tr>
+          ) : data.length === 0 ? (
+            <tr><td colSpan={5} className="text-center py-8 text-gray-500">Nenhum resultado ainda.</td></tr>
+          ) : data.map(r => (
+            <tr key={r.id} className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors last:border-0">
+              <td className="px-4 py-3.5 font-medium text-white">
+                {(r.candidato as { nome_completo?: string })?.nome_completo || (r.colaborador as { nome?: string })?.nome || '-'}
+              </td>
+              <td className="px-4 py-3.5">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
+                  {r.tipo.toUpperCase()}
+                </span>
+              </td>
+              <td className="px-4 py-3.5 font-medium text-white">{r.score ?? '-'}</td>
+              <td className="px-4 py-3.5 text-gray-400">{r.duracao_segundos ? `${Math.floor(r.duracao_segundos / 60)}min` : '-'}</td>
+              <td className="px-4 py-3.5 text-gray-500 text-xs">{new Date(r.created_at).toLocaleDateString('pt-BR')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function EmpresaTestesPage() {
   const { user } = useAuth()
   const router = useRouter()
@@ -38,44 +80,6 @@ export default function EmpresaTestesPage() {
     setTemplates(prev => prev.filter(t => t.id !== id))
   }
 
-  const ResultsTable = ({ data, label }: { data: (RespostaTeste & { candidato?: { nome_completo: string }; colaborador?: { nome: string } })[]; label: string }) => (
-    <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-[#1e2a5e]">
-        <p className="text-sm font-semibold text-white">Resultados - {label}</p>
-      </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-[#1e2a5e]">
-            {['Nome', 'Tipo', 'Score', 'Duração', 'Data'].map(h => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr><td colSpan={5} className="text-center py-8 text-gray-500">Carregando...</td></tr>
-          ) : data.length === 0 ? (
-            <tr><td colSpan={5} className="text-center py-8 text-gray-500">Nenhum resultado ainda.</td></tr>
-          ) : data.map(r => (
-            <tr key={r.id} className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors last:border-0">
-              <td className="px-4 py-3.5 font-medium text-white">
-                {(r.candidato as any)?.nome_completo || (r.colaborador as any)?.nome || '-'}
-              </td>
-              <td className="px-4 py-3.5">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">
-                  {r.tipo.toUpperCase()}
-                </span>
-              </td>
-              <td className="px-4 py-3.5 font-medium text-white">{r.score ?? '-'}</td>
-              <td className="px-4 py-3.5 text-gray-400">{r.duracao_segundos ? `${Math.floor(r.duracao_segundos / 60)}min` : '-'}</td>
-              <td className="px-4 py-3.5 text-gray-500 text-xs">{new Date(r.created_at).toLocaleDateString('pt-BR')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
@@ -96,8 +100,8 @@ export default function EmpresaTestesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ResultsTable data={respostasCandidatos as any} label="Candidatos" />
-        <ResultsTable data={respostasColaboradores as any} label="Colaboradores" />
+        <ResultsTable data={respostasCandidatos as ResultRow[]} label="Candidatos" loading={loading} />
+        <ResultsTable data={respostasColaboradores as ResultRow[]} label="Colaboradores" loading={loading} />
       </div>
 
       <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">

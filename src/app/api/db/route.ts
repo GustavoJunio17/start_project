@@ -70,8 +70,22 @@ export async function POST(request: NextRequest) {
     return deny(`Sem permissao para ${type} em ${table}`)
   }
 
+  // Candidato role: special scoping rules (no empresa_id in session)
+  if (role === 'candidato') {
+    if (table === 'vagas' && type === 'select') {
+      // candidatos can read all open vagas — no tenant filter needed
+    } else if (table === 'candidatos') {
+      if (type === 'select') {
+        // can only read their own applications
+        desc.filters = [...(desc.filters ?? []), { column: 'user_id', op: 'eq', value: user.id }]
+      }
+      // insert/update: empresa_id comes from the vaga they're applying to (sent in body)
+    } else if (policy.tenanted) {
+      // other tenanted tables not explicitly handled above are blocked for candidatos
+      return deny(`Sem permissao para ${type} em ${table}`)
+    }
   // Enforce tenant scoping for non-super roles on tenanted tables
-  if (policy.tenanted && !isSuper) {
+  } else if (policy.tenanted && !isSuper) {
     const empresaId = user.empresa_id as string | null
     if (!empresaId) return deny('Sem empresa_id na sessao')
 

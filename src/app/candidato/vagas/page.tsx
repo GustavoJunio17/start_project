@@ -3,63 +3,204 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { Vaga } from '@/types/database'
-import { Search, Briefcase, Building2, CheckCircle } from 'lucide-react'
+import { Search, Briefcase, Building2, ChevronDown, CalendarDays, FileText, ListChecks } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+
+type VagaComEmpresa = Vaga & { empresa?: { nome: string } }
+
+interface Candidatura {
+  id: string
+  vaga_id: string | null
+  status: string
+  created_at: string
+  curriculo_nome: string | null
+  linkedin: string | null
+  pretensao_salarial: string | null
+  mensagem: string | null
+  vaga_titulo: string | null
+  vaga_categoria: string | null
+  vaga_descricao: string | null
+  vaga_requisitos: string | null
+  empresa_nome: string | null
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
+  em_analise: 'Em análise',
+  aprovado: 'Aprovado',
+  reprovado: 'Reprovado',
+  contratado: 'Contratado',
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  pendente: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  em_analise: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+  aprovado: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  reprovado: 'bg-red-500/10 text-red-400 border-red-500/20',
+  contratado: 'bg-[#00D4FF]/10 text-[#00D4FF] border-[#00D4FF]/20',
+}
+
+function CandidaturaCard({ c, idx }: { c: Candidatura; idx: number }) {
+  const [expanded, setExpanded] = useState(false)
+  const statusLabel = STATUS_LABEL[c.status] ?? c.status
+  const statusColor = STATUS_COLOR[c.status] ?? 'bg-gray-500/10 text-gray-400 border-gray-500/20'
+
+  return (
+    <div
+      className="glass-card overflow-hidden animate-in fade-in zoom-in-95 fill-mode-both"
+      style={{ animationDelay: `${idx * 40}ms` }}
+    >
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="w-full p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center text-[#00D4FF] font-bold shrink-0">
+            {c.empresa_nome?.charAt(0) || 'V'}
+          </div>
+          <div>
+            <p className="font-semibold text-white text-sm">{c.vaga_titulo || '—'}</p>
+            <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+              <Building2 className="w-3 h-3" />
+              <span>{c.empresa_nome || '—'}</span>
+              {c.vaga_categoria && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-gray-700" />
+                  <span className="text-gray-600">{c.vaga_categoria}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 sm:shrink-0">
+          <span className="text-xs text-gray-600">
+            {new Date(c.created_at).toLocaleDateString('pt-BR')}
+          </span>
+          <span className={cn('px-3 py-1.5 rounded-full text-xs font-bold border', statusColor)}>
+            {statusLabel}
+          </span>
+          <ChevronDown className={cn('w-4 h-4 text-gray-500 transition-transform shrink-0', expanded && 'rotate-180')} />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-white/[0.06] px-5 pb-5 pt-4 space-y-5 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-white/[0.02] rounded-xl p-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1 flex items-center gap-1">
+                <CalendarDays className="w-3 h-3" /> Inscrito em
+              </p>
+              <p className="text-sm text-white font-medium">
+                {new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            {c.pretensao_salarial && (
+              <div className="bg-white/[0.02] rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">Pretensão salarial</p>
+                <p className="text-sm text-white font-medium">{c.pretensao_salarial}</p>
+              </div>
+            )}
+            {c.curriculo_nome && (
+              <div className="bg-white/[0.02] rounded-xl p-3">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">Currículo</p>
+                <p className="text-sm text-white font-medium truncate">{c.curriculo_nome}</p>
+              </div>
+            )}
+          </div>
+
+          {c.vaga_descricao && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2 flex items-center gap-1.5">
+                <FileText className="w-3 h-3" /> Sobre a vaga
+              </p>
+              <p className="text-sm text-gray-400 leading-relaxed line-clamp-4">{c.vaga_descricao}</p>
+            </div>
+          )}
+
+          {c.vaga_requisitos && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-2 flex items-center gap-1.5">
+                <ListChecks className="w-3 h-3" /> Requisitos
+              </p>
+              <div className="space-y-1">
+                {c.vaga_requisitos.split('\n').filter(r => r.trim()).slice(0, 5).map((req, i) => (
+                  <div key={i} className="flex gap-2 text-sm text-gray-400">
+                    <span className="text-[#00D4FF] font-bold mt-0.5 shrink-0">•</span>
+                    <span>{req.trim()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {c.linkedin && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">LinkedIn</p>
+              <p className="text-sm text-[#00D4FF]">{c.linkedin}</p>
+            </div>
+          )}
+
+          {c.vaga_id && (
+            <Link
+              href={`/vagas/${c.vaga_id}`}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[#00D4FF] hover:text-white transition-colors"
+            >
+              Ver vaga completa →
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function CandidatoVagasPage() {
   const { user } = useAuth()
-  const [vagas, setVagas] = useState<(Vaga & { empresa?: { nome: string } })[]>([])
+  const [tab, setTab] = useState<'disponiveis' | 'minhas'>('disponiveis')
+  const [vagas, setVagas] = useState<VagaComEmpresa[]>([])
+  const [candidaturas, setCandidaturas] = useState<Candidatura[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [selectedVaga, setSelectedVaga] = useState<(Vaga & { empresa?: { nome: string } }) | null>(null)
-  const [applying, setApplying] = useState(false)
-  const [applied, setApplied] = useState<string[]>([])
-  const [cargoPretendido, setCargoPretendido] = useState('')
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set())
   const supabase = createClient()
-  const router = useRouter()
 
   useEffect(() => {
     async function load() {
-      const { data: vagasData } = await supabase.from('vagas').select('*, empresa:empresas(nome)').eq('status', 'aberta').order('created_at', { ascending: false })
+      const { data: vagasData } = await supabase
+        .from('vagas')
+        .select('*, empresa:empresas(nome)')
+        .eq('status', 'aberta')
+        .order('created_at', { ascending: false })
       setVagas(vagasData || [])
+
       if (user) {
-        const { data: candidaturas } = await supabase.from('candidatos').select('vaga_id').eq('user_id', user.id)
-        setApplied((candidaturas || []).map(c => c.vaga_id).filter(Boolean) as string[])
+        const res = await fetch('/api/candidaturas/minhas', { credentials: 'include' })
+        if (res.ok) {
+          const json = await res.json()
+          const list: Candidatura[] = json.data || []
+          setCandidaturas(list)
+          setAppliedIds(new Set(list.map(c => c.vaga_id).filter(Boolean) as string[]))
+        }
       }
       setLoading(false)
     }
     load()
   }, [user])
 
-  const handleApply = async () => {
-    if (!user || !selectedVaga) return
-    setApplying(true)
-    const { data: existing } = await supabase.from('candidatos').select('id, data_ultimo_teste')
-      .eq('user_id', user.id).eq('empresa_id', selectedVaga.empresa_id)
-      .order('created_at', { ascending: false }).limit(1)
-    if (existing?.length) {
-      const lastTest = existing[0].data_ultimo_teste
-      if (lastTest) {
-        const monthsSince = (Date.now() - new Date(lastTest).getTime()) / (1000 * 60 * 60 * 24 * 30)
-        if (monthsSince < 12) { setApplying(false); return }
-      }
-    }
-    await supabase.from('candidatos').insert({
-      user_id: user.id, empresa_id: selectedVaga.empresa_id, vaga_id: selectedVaga.id,
-      nome_completo: user.nome_completo, email: user.email, whatsapp: user.telefone,
-      cargo_pretendido: cargoPretendido || selectedVaga.titulo,
-    })
-    setApplied([...applied, selectedVaga.id])
-    setApplying(false); setSelectedVaga(null); setCargoPretendido('')
-  }
+  const filteredVagas = vagas
+    .filter(v => !appliedIds.has(v.id))
+    .filter(v =>
+      v.titulo.toLowerCase().includes(search.toLowerCase()) ||
+      v.categoria?.toLowerCase().includes(search.toLowerCase()) ||
+      (v.empresa as any)?.nome?.toLowerCase().includes(search.toLowerCase())
+    )
 
-  const filtered = vagas.filter(v =>
-    v.titulo.toLowerCase().includes(search.toLowerCase()) ||
-    v.categoria?.toLowerCase().includes(search.toLowerCase()) ||
-    (v.empresa as any)?.nome?.toLowerCase().includes(search.toLowerCase())
+  const filteredCandidaturas = candidaturas.filter(c =>
+    c.vaga_titulo?.toLowerCase().includes(search.toLowerCase()) ||
+    c.empresa_nome?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -67,97 +208,66 @@ export default function CandidatoVagasPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <Briefcase className="w-8 h-8 text-[#00D4FF]" /> Vagas Disponíveis
+            <Briefcase className="w-8 h-8 text-[#00D4FF]" /> Vagas
           </h1>
-          <p className="text-gray-400 text-sm mt-1">Explore oportunidades que dão match com seu perfil.</p>
+          <p className="text-gray-400 text-sm mt-1">Explore oportunidades e acompanhe suas candidaturas.</p>
         </div>
 
         <div className="relative w-full md:w-96 group">
           <div className="absolute inset-0 bg-[#00D4FF]/5 blur-xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#00D4FF] transition-colors" />
-          <input 
-            placeholder="Buscar por cargo, empresa ou categoria..." 
-            value={search} 
+          <input
+            placeholder="Buscar..."
+            value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-[#111633]/50 backdrop-blur-xl border border-white/[0.08] rounded-2xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#00D4FF]/50 transition-all relative z-10" 
+            className="w-full pl-11 pr-4 py-3 bg-[#111633]/50 backdrop-blur-xl border border-white/[0.08] rounded-2xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#00D4FF]/50 transition-all relative z-10"
           />
         </div>
       </div>
 
-      <Dialog open={!!selectedVaga} onOpenChange={open => !open && setSelectedVaga(null)}>
-        <DialogContent className="bg-[#0A0E27] border-white/[0.1] shadow-2xl shadow-black/50 sm:max-w-[500px] p-0 overflow-hidden rounded-3xl">
-          {selectedVaga && (
-            <div className="flex flex-col">
-              <div className="h-32 bg-gradient-to-br from-[#00D4FF]/20 to-[#0066FF]/20 relative">
-                <div className="absolute -bottom-6 left-8 w-14 h-14 rounded-2xl bg-[#111633] border border-white/[0.1] flex items-center justify-center text-[#00D4FF] font-bold text-xl shadow-xl">
-                  {(selectedVaga.empresa as any)?.nome?.charAt(0) || 'V'}
-                </div>
-              </div>
-              
-              <div className="p-8 pt-10 space-y-6">
-                <div>
-                  <DialogTitle className="text-2xl font-bold text-white mb-1">{selectedVaga.titulo}</DialogTitle>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
-                    <span className="flex items-center gap-1.5"><Building2 size={14} className="text-[#00D4FF]" />{(selectedVaga.empresa as any)?.nome}</span>
-                    {selectedVaga.categoria && <span className="w-1 h-1 rounded-full bg-gray-700" />}
-                    {selectedVaga.categoria && <span className="text-[#00D4FF]/80">{selectedVaga.categoria}</span>}
-                  </div>
-                </div>
-
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {selectedVaga.descricao && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Sobre a vaga</p>
-                      <p className="text-sm text-gray-300 leading-relaxed">{selectedVaga.descricao}</p>
-                    </div>
-                  )}
-                  {selectedVaga.requisitos && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Requisitos</p>
-                      <p className="text-sm text-gray-300 leading-relaxed">{selectedVaga.requisitos}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4 border-t border-white/[0.05] space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Cargo que pretende ocupar</label>
-                    <input 
-                      value={cargoPretendido} 
-                      onChange={e => setCargoPretendido(e.target.value)}
-                      placeholder={selectedVaga.titulo}
-                      className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors" 
-                    />
-                  </div>
-                  <button 
-                    onClick={handleApply} 
-                    disabled={applying}
-                    className="w-full py-4 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-[#00D4FF]/20 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0"
-                  >
-                    {applying ? 'Processando...' : 'Confirmar Candidatura'}
-                  </button>
-                </div>
-              </div>
-            </div>
+      <div className="flex gap-1 p-1 bg-white/[0.03] border border-white/[0.08] rounded-2xl w-fit">
+        <button
+          onClick={() => setTab('disponiveis')}
+          className={cn(
+            'px-5 py-2.5 rounded-xl text-sm font-semibold transition-all',
+            tab === 'disponiveis'
+              ? 'bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white shadow-lg shadow-[#00D4FF]/20'
+              : 'text-gray-400 hover:text-white'
           )}
-        </DialogContent>
-      </Dialog>
+        >
+          Disponíveis
+          <span className={cn('ml-2 text-xs px-1.5 py-0.5 rounded-full', tab === 'disponiveis' ? 'bg-white/20' : 'bg-white/[0.05]')}>
+            {vagas.length - appliedIds.size}
+          </span>
+        </button>
+        <button
+          onClick={() => setTab('minhas')}
+          className={cn(
+            'px-5 py-2.5 rounded-xl text-sm font-semibold transition-all',
+            tab === 'minhas'
+              ? 'bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white shadow-lg shadow-[#00D4FF]/20'
+              : 'text-gray-400 hover:text-white'
+          )}
+        >
+          Minhas Candidaturas
+          <span className={cn('ml-2 text-xs px-1.5 py-0.5 rounded-full', tab === 'minhas' ? 'bg-white/20' : 'bg-white/[0.05]')}>
+            {candidaturas.length}
+          </span>
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="glass-card h-48 animate-pulse" />
-          ))
-        ) : filtered.length === 0 ? (
-          <div className="glass-card col-span-full py-20 text-center border-dashed">
-            <Search size={40} className="text-gray-700 mx-auto mb-4" />
-            <p className="text-gray-400">Nenhuma vaga encontrada com os termos buscados.</p>
-          </div>
-        ) : filtered.map((vaga, idx) => {
-          const alreadyApplied = applied.includes(vaga.id)
-          return (
-            <div 
-              key={vaga.id} 
+      {tab === 'disponiveis' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass-card h-48 animate-pulse" />)
+          ) : filteredVagas.length === 0 ? (
+            <div className="glass-card col-span-full py-20 text-center border-dashed">
+              <Search size={40} className="text-gray-700 mx-auto mb-4" />
+              <p className="text-gray-400">Nenhuma vaga disponível no momento.</p>
+            </div>
+          ) : filteredVagas.map((vaga, idx) => (
+            <div
+              key={vaga.id}
               className="glass-card p-6 hover:border-[#00D4FF]/30 hover:-translate-y-1 transition-all group animate-in fade-in zoom-in-95 fill-mode-both"
               style={{ animationDelay: `${idx * 50}ms` }}
             >
@@ -171,35 +281,39 @@ export default function CandidatoVagasPage() {
                   </span>
                 )}
               </div>
-
               <h3 className="font-bold text-lg text-white mb-1 group-hover:text-[#00D4FF] transition-colors">{vaga.titulo}</h3>
               <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
                 <Building2 className="w-3 h-3" />
                 <span>{(vaga.empresa as any)?.nome}</span>
               </div>
-
               {vaga.descricao && (
-                <p className="text-sm text-gray-500 line-clamp-2 mb-6 leading-relaxed">
-                  {vaga.descricao}
-                </p>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-6 leading-relaxed">{vaga.descricao}</p>
               )}
-
-              {alreadyApplied ? (
-                <div className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#10B981]/5 border border-[#10B981]/20 text-[#10B981] rounded-xl text-sm font-semibold">
-                  <CheckCircle className="w-4 h-4" /> Já candidatado
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setSelectedVaga(vaga)}
-                  className="w-full py-3 px-4 bg-white/[0.03] border border-white/[0.08] text-white rounded-xl font-semibold text-sm group-hover:bg-gradient-to-r group-hover:from-[#00D4FF] group-hover:to-[#0066FF] group-hover:border-transparent transition-all group-hover:shadow-lg group-hover:shadow-[#00D4FF]/20"
-                >
-                  Candidatar-se
-                </button>
-              )}
+              <Link
+                href={`/vagas/${vaga.id}`}
+                className="block w-full py-3 px-4 bg-white/[0.03] border border-white/[0.08] text-white rounded-xl font-semibold text-sm text-center group-hover:bg-gradient-to-r group-hover:from-[#00D4FF] group-hover:to-[#0066FF] group-hover:border-transparent transition-all group-hover:shadow-lg group-hover:shadow-[#00D4FF]/20"
+              >
+                Candidatar-se
+              </Link>
             </div>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'minhas' && (
+        <div className="space-y-3">
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass-card h-24 animate-pulse" />)
+          ) : filteredCandidaturas.length === 0 ? (
+            <div className="glass-card py-20 text-center border-dashed">
+              <Briefcase size={40} className="text-gray-700 mx-auto mb-4" />
+              <p className="text-gray-400">Você ainda não se candidatou a nenhuma vaga.</p>
+            </div>
+          ) : filteredCandidaturas.map((c, idx) => (
+            <CandidaturaCard key={c.id} c={c} idx={idx} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

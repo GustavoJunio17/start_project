@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useCargosEDepartamentos } from '@/hooks/useCargosEDepartamentos'
 import { AlertCircle } from 'lucide-react'
+import { maskPhone } from '@/lib/utils/masks'
 
 import type { User } from '@/types/database'
 
@@ -86,7 +87,7 @@ export function FormGestorRH({ empresaId, onClose, onSaved, gestor }: FormGestor
         ...(isEditing && { id: gestor!.id }),
         nome_completo: formData.nome_completo,
         email: formData.email,
-        telefone: formData.telefone || null,
+        telefone: formData.telefone ? formData.telefone.replace(/\D/g, '') : null,
         ...(formData.senha && { senha: formData.senha }),
         departamentos: formData.departamentos,
       }
@@ -160,8 +161,9 @@ export function FormGestorRH({ empresaId, onClose, onSaved, gestor }: FormGestor
                 <label className="text-xs font-medium text-muted-foreground">Telefone/WhatsApp</label>
                 <Input
                   value={formData.telefone}
-                  onChange={e => setFormData(f => ({ ...f, telefone: e.target.value }))}
+                  onChange={e => setFormData(f => ({ ...f, telefone: maskPhone(e.target.value) }))}
                   placeholder="(11) 99999-9999"
+                  inputMode="numeric"
                   className="bg-card"
                 />
               </div>

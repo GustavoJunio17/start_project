@@ -1,6 +1,12 @@
 import jwt from 'jsonwebtoken'
 
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
+const isProduction = process.env.NODE_ENV === 'production'
+const SECRET = process.env.JWT_SECRET || (isProduction ? '' : 'dev-secret-change-in-production')
+
+if (isProduction && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required in production')
+}
+
 const EXPIRES_IN = '7d'
 
 export interface JwtPayload {
@@ -24,7 +30,7 @@ export function verifyToken(token: string): JwtPayload | null {
 export const AUTH_COOKIE = 'auth_token'
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: false, // Always false for development
+  secure: isProduction,
   sameSite: 'lax' as const,
   path: '/',
   maxAge: 60 * 60 * 24 * 7, // 7 days

@@ -29,7 +29,7 @@ export function validarCNPJ(cnpj: string): boolean {
   }
 
   let remainder = sum % 11
-  let digit1 = remainder < 2 ? 0 : 11 - remainder
+  const digit1 = remainder < 2 ? 0 : 11 - remainder
 
   // Calcula segundo dígito verificador
   sum = 0
@@ -41,7 +41,7 @@ export function validarCNPJ(cnpj: string): boolean {
 
   sum += digit1 * 2
   remainder = sum % 11
-  let digit2 = remainder < 2 ? 0 : 11 - remainder
+  const digit2 = remainder < 2 ? 0 : 11 - remainder
 
   return parseInt(cleaned[12]) === digit1 && parseInt(cleaned[13]) === digit2
 }

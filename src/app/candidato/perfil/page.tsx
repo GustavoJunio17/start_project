@@ -3,16 +3,14 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { Tema } from '@/types/database'
 import { Save, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { maskPhone, validatePassword } from '@/lib/utils/masks'
 
 export default function CandidatoPerfilPage() {
   const { user, refetch } = useAuth()
   const [nome, setNome] = useState(user?.nome_completo || '')
   const [telefone, setTelefone] = useState(user?.telefone || '')
-  const [tema, setTema] = useState<Tema>(user?.tema_preferido || 'dark')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const supabase = createClient()
@@ -21,7 +19,7 @@ export default function CandidatoPerfilPage() {
     e.preventDefault()
     if (!user) return
     setSaving(true)
-    await supabase.from('users').update({ nome_completo: nome, telefone, tema_preferido: tema }).eq('id', user.id)
+    await supabase.from('users').update({ nome_completo: nome, telefone }).eq('id', user.id)
     setSaving(false)
     setMessage('Perfil atualizado com sucesso!')
     refetch()
@@ -29,10 +27,12 @@ export default function CandidatoPerfilPage() {
   }
 
   const handlePasswordChange = async () => {
-    const newPassword = prompt('Nova senha (mínimo 6 caracteres):')
-    if (!newPassword || newPassword.length < 6) {
-      setMessage('Senha deve ter no mínimo 6 caracteres')
-      setTimeout(() => setMessage(''), 3000)
+    const newPassword = prompt('Nova senha (mín. 8 caracteres, 1 maiúscula, 1 minúscula, 1 número):')
+    if (!newPassword) return
+    const { valid } = validatePassword(newPassword)
+    if (!valid) {
+      setMessage('Senha deve ter mín. 8 caracteres, 1 maiúscula, 1 minúscula e 1 número')
+      setTimeout(() => setMessage(''), 4000)
       return
     }
     const res = await fetch('/api/auth/change-password', {
@@ -80,20 +80,7 @@ export default function CandidatoPerfilPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-300">WhatsApp</label>
-              <input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(00) 00000-0000" className={inputClass} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-300">Tema da Interface</label>
-              <Select value={tema} onValueChange={v => setTema(v as Tema)}>
-                <SelectTrigger className="w-full h-11 bg-white/[0.03] border-white/[0.08] rounded-xl text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#0A0E27] border-white/[0.1]">
-                  <SelectItem value="dark">Dark Mode (Padrão)</SelectItem>
-                  <SelectItem value="clean">Light Mode</SelectItem>
-                  <SelectItem value="auto">Automático (Sistema)</SelectItem>
-                </SelectContent>
-              </Select>
+              <input value={telefone} onChange={e => setTelefone(maskPhone(e.target.value))} placeholder="(00) 00000-0000" inputMode="numeric" className={inputClass} />
             </div>
           </div>
 

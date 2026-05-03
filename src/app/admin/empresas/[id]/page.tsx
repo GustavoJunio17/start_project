@@ -461,7 +461,7 @@ export default function EmpresaDetailsPage() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Deletar Empresa</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Tem certeza que deseja deletar "{empresa.nome}"? Esta ação não pode ser desfeita.
+                  Tem certeza que deseja deletar &quot;{empresa.nome}&quot;? Esta ação não pode ser desfeita.
                 </p>
               </div>
               <div className="flex gap-2 justify-end">

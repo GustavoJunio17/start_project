@@ -202,17 +202,49 @@ export default function EditarVagaPage() {
                 <p className="font-semibold text-white">Informações Principais</p>
                 <p className="text-sm text-gray-400 mt-1">Detalhes básicos da vaga</p>
               </div>
-              <div className="p-5">
+              <div className="p-5 space-y-4">
+                <div className="space-y-2">
+                  <Label>Título da Vaga *</Label>
+                  <Input
+                    value={form.titulo}
+                    onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                    required
+                    className="bg-background"
+                    placeholder="Ex: Desenvolvedor Front-end Pleno (Sistemas de Infraestrutura)"
+                  />
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Título da Vaga *</Label>
-                    <Input
-                      value={form.titulo}
-                      onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                      required
-                      className="bg-background"
-                      placeholder="Ex: Desenvolvedor Front-end Pleno (Sistemas de Infraestrutura)"
-                    />
+                    <Label>Departamento/Setor
+                      {!cargosDeptLoading && departamentos.length === 0 && (
+                        <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                      )}
+                    </Label>
+                    {cargosDeptLoading ? (
+                      <div className="h-10 bg-background rounded border border-border animate-pulse" />
+                    ) : departamentos.length > 0 ? (
+                      <Select
+                        value={form.departamento}
+                        onValueChange={handleDepartamentoChange}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Selecione um departamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departamentos.map(dept => (
+                            <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={form.departamento}
+                        onChange={(e) => setForm({ ...form, departamento: e.target.value })}
+                        className="bg-background"
+                        placeholder="Ex: Engenharia, Comercial, RH"
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Cargo
@@ -304,7 +336,7 @@ export default function EditarVagaPage() {
                 <p className="font-semibold text-white">Informações de Contrato</p>
                 <p className="text-sm text-gray-400 mt-1">Detalhes sobre o tipo de contrato e compensação</p>
               </div>
-              <div className="p-5">
+              <div className="p-5 space-y-4">
                 <div className="grid md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>Modelo de Trabalho</Label>
@@ -368,37 +400,6 @@ export default function EditarVagaPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Departamento/Setor
-                    {!cargosDeptLoading && departamentos.length === 0 && (
-                      <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
-                    )}
-                  </Label>
-                  {cargosDeptLoading ? (
-                    <div className="h-10 bg-background rounded border border-border animate-pulse" />
-                  ) : departamentos.length > 0 ? (
-                    <Select
-                      value={form.departamento}
-                      onValueChange={handleDepartamentoChange}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Selecione um departamento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departamentos.map(dept => (
-                          <SelectItem key={dept.id} value={dept.nome}>{dept.nome}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      value={form.departamento}
-                      onChange={(e) => setForm({ ...form, departamento: e.target.value })}
-                      className="bg-background"
-                      placeholder="Ex: Engenharia, Comercial, RH"
-                    />
-                  )}
-                </div>
               </div>
             </div>
 
@@ -407,7 +408,7 @@ export default function EditarVagaPage() {
                 <p className="font-semibold text-white">Especificações Técnicas</p>
                 <p className="text-sm text-gray-400 mt-1">Habilidades, idiomas e requisitos educacionais</p>
               </div>
-              <div className="p-5">
+              <div className="p-5 space-y-4">
                 <div className="space-y-2">
                   <Label>Hard Skills (Tecnologias)</Label>
                   <Textarea
@@ -449,7 +450,7 @@ export default function EditarVagaPage() {
                 <p className="font-semibold text-white">Diferenciais e Benefícios</p>
                 <p className="text-sm text-gray-400 mt-1">O que você oferece e pontos diferenciais</p>
               </div>
-              <div className="p-5">
+              <div className="p-5 space-y-4">
                 <div className="space-y-2">
                   <Label>Benefícios</Label>
                   <Textarea

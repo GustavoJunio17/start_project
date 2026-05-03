@@ -206,10 +206,12 @@ export function useKeyboardShortcut(key: string, callback: () => void, ctrlKey?:
  */
 export function usePreviousValue<T>(value: T): T | undefined {
   const ref = useRef<T | undefined>(undefined)
+  const [prev, setPrev] = useState<T | undefined>(undefined)
 
   useEffect(() => {
+    setPrev(ref.current)
     ref.current = value
   }, [value])
 
-  return ref.current
+  return prev
 }

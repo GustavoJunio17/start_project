@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Zap, AlertCircle, CheckCircle, Lock } from 'lucide-react'
+import { validatePassword } from '@/lib/utils/masks'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -24,6 +26,11 @@ function ResetPasswordForm() {
     setError('')
     if (password !== confirm) {
       setError('As senhas não conferem')
+      return
+    }
+    const { valid } = validatePassword(password)
+    if (!valid) {
+      setError('A senha não atende aos requisitos de segurança')
       return
     }
     setLoading(true)
@@ -88,7 +95,7 @@ function ResetPasswordForm() {
                   minLength={8}
                   className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#00D4FF]/60 focus:ring-1 focus:ring-[#00D4FF]/15 transition-colors disabled:opacity-60"
                 />
-                <p className="text-xs text-gray-500 mt-1.5">Mínimo 8 caracteres, uma maiúscula, uma minúscula e um número.</p>
+                <PasswordStrength password={password} />
               </div>
               <div>
                 <label htmlFor="confirm" className="block text-sm font-medium text-gray-300 mb-1.5">

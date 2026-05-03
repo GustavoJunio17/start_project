@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import pool from '@/lib/db/pool'
 
-const SETUP_SECRET = process.env.SETUP_SECRET || 'startpro-setup-2026'
+const isProduction = process.env.NODE_ENV === 'production'
+const SETUP_SECRET = process.env.SETUP_SECRET || (isProduction ? '' : 'startpro-setup-2026')
+
+if (isProduction && !process.env.SETUP_SECRET) {
+  throw new Error('SETUP_SECRET environment variable is required in production')
+}
 const DB_UNAVAILABLE_MESSAGE = 'Banco de dados indisponivel. Inicie o Postgres e tente novamente.'
 
 function isDbConnectionRefused(error: unknown) {
@@ -29,8 +34,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Role invalida. Apenas super_admin, super_gestor e admin' }, { status: 400 })
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Senha deve ter no minimo 6 caracteres' }, { status: 400 })
+    if (password.length < 8) {
+      return NextResponse.json({ error: 'Senha deve ter no minimo 8 caracteres' }, { status: 400 })
     }
 
     const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [email])

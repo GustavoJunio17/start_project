@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node.js migration scripts and seed files use CommonJS require()
+    "scripts/**",
+    "check-candidatos.js",
+    "check-data.js",
+    "seed-full.js",
+    "seed-relatorios.js",
   ]),
 ]);
 

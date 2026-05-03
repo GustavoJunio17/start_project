@@ -5,6 +5,8 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/db/client"
 import { useAuth } from "@/hooks/useAuth"
 import type { User, Role } from "@/types/database"
+import { validatePassword } from "@/lib/utils/masks"
+import { PasswordStrength } from "@/components/ui/PasswordStrength"
 
 interface FormUsuarioProps {
   user: User | null
@@ -73,6 +75,18 @@ export function FormUsuario({ user, mode = 'convidar', onClose, onSaved }: FormU
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (formData.senha) {
+      const { valid } = validatePassword(formData.senha)
+      if (!valid) {
+        alert('A senha não atende aos requisitos: mín. 8 caracteres, 1 maiúscula, 1 minúscula, 1 número')
+        return
+      }
+    } else if (mode === 'criar') {
+      alert('Senha é obrigatória')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -212,10 +226,12 @@ export function FormUsuario({ user, mode = 'convidar', onClose, onSaved }: FormU
                     type="password"
                     value={formData.senha}
                     onChange={e => setFormData(f => ({...f, senha: e.target.value}))}
-                    placeholder={mode === 'criar' ? 'Mínimo 6 caracteres' : 'Deixe em branco para manter a atual'}
+                    placeholder={mode === 'criar' ? 'Mínimo 8 caracteres' : 'Deixe em branco para manter a atual'}
                     required={mode === 'criar'}
+                    minLength={8}
                     className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
                   />
+                  <PasswordStrength password={formData.senha} />
                 </div>
               )}
 

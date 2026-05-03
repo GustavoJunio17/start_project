@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const { data: vagas } = await vagasQuery
 
     // Buscar candidatos com login
-    let candidatosQuery = db.from('candidatos').select('id, vaga_id, status_candidatura').eq('empresa_id', user.empresa_id)
+    const candidatosQuery = db.from('candidatos').select('id, vaga_id, status_candidatura').eq('empresa_id', user.empresa_id)
     const { data: candidatos } = await candidatosQuery
 
     // Filtrar candidatos por vagas do gestor_rh
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       : (candidatos || [])
 
     // Buscar colaboradores
-    let colaboradoresQuery = db.from('colaboradores').select('id, departamento').eq('empresa_id', user.empresa_id)
+    const colaboradoresQuery = db.from('colaboradores').select('id, departamento').eq('empresa_id', user.empresa_id)
     const { data: colaboradores } = await colaboradoresQuery
 
     // Filtrar colaboradores por setores do gestor_rh

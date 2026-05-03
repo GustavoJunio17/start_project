@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import pool from '@/lib/db/pool'
 import { checkRateLimit, getClientIp } from '@/lib/auth/rate-limit'
+import { sendEmail, getPasswordResetEmailHTML } from '@/lib/email/resend'
 
 // Ensure the reset tokens table exists
 async function ensureTable() {
@@ -49,12 +50,18 @@ export async function POST(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const resetUrl = `${appUrl}/auth/reset-password?token=${token}`
 
-  // In production, send email here. For now, log the link.
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[password-reset] ${email} → ${resetUrl}`)
-    return NextResponse.json({ message: 'Link gerado.', resetUrl })
+  try {
+    const html = getPasswordResetEmailHTML(resetUrl, email)
+    await sendEmail({
+      to: email,
+      subject: 'Redefinir sua senha - Start',
+      html,
+    })
+    console.log(`[password-reset] Email enviado para ${email}`)
+  } catch (error) {
+    console.error(`[password-reset] Erro ao enviar email para ${email}:`, error)
+    // Don't expose error to client
   }
 
-  console.log(`[password-reset] Token gerado para ${email}`)
   return NextResponse.json({ message: 'Se o e-mail existir, voce recebera instrucoes.' })
 }

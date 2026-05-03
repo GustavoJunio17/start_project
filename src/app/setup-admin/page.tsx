@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { validatePassword } from '@/lib/utils/masks'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 
 type SetupAdminResponse = {
   error?: string
@@ -34,6 +36,13 @@ export default function SetupAdminPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+
+    const { valid } = validatePassword(password)
+    if (!valid) {
+      setError('A senha não atende aos requisitos de segurança')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -133,10 +142,11 @@ export default function SetupAdminPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              minLength={6}
+              minLength={8}
               className="w-full px-3 py-2 rounded-lg bg-[#0A0E27] border border-[#1e2a5e] text-white text-sm focus:outline-none focus:border-[#00D4FF]"
-              placeholder="Minimo 6 caracteres"
+              placeholder="Mínimo 8 caracteres"
             />
+            <PasswordStrength password={password} />
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}

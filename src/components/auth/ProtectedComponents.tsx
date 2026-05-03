@@ -5,6 +5,7 @@
 
 'use client'
 
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import type { Role } from '@/types/database'
 import { canManageVagas, canManageCandidatos, isEmpresaAdmin } from '@/lib/auth/permissions'
@@ -268,19 +269,19 @@ export function Navbar() {
         <div className="flex gap-4">
           {/* Mostrar para super admins */}
           <IfIsSuperAdmin>
-            <a href="/admin/empresas">Empresas</a>
+            <Link href="/admin/empresas">Empresas</Link>
           </IfIsSuperAdmin>
 
           {/* Mostrar para gerenciadores de vagas */}
           <IfCanManageVagas>
-            <a href="/vagas">Vagas</a>
-            <a href="/candidatos">Candidatos</a>
+            <Link href="/vagas">Vagas</Link>
+            <Link href="/candidatos">Candidatos</Link>
           </IfCanManageVagas>
 
           {/* Mostrar para candidatos */}
           <IfIsCandidato>
-            <a href="/vagas">Vagas Disponíveis</a>
-            <a href="/minhas-candidaturas">Minhas Candidaturas</a>
+            <Link href="/vagas">Vagas Disponíveis</Link>
+            <Link href="/minhas-candidaturas">Minhas Candidaturas</Link>
           </IfIsCandidato>
 
           {/* Mostrar para todos autenticados */}

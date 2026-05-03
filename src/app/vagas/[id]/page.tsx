@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { FileText, ListChecks, Award, Layers, ArrowLeft, Upload, CheckCircle, LogIn, UserPlus } from 'lucide-react'
 import type { Vaga } from '@/types/database'
+import { maskPhone, maskCurrency } from '@/lib/utils/masks'
 
 export default function VagaDetailPage() {
   const params = useParams()
@@ -16,6 +17,7 @@ export default function VagaDetailPage() {
   const [vagaLoading, setVagaLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [alreadyApplied, setAlreadyApplied] = useState(false)
   const [fileName, setFileName] = useState<string>('')
   const [formData, setFormData] = useState({ telefone: '', linkedin: '', pretensaoSalarial: '', mensagem: '', curriculo: null as File | null })
 
@@ -24,8 +26,26 @@ export default function VagaDetailPage() {
     fetch(`/api/vagas/${vagaId}/details`).then(r => r.ok ? r.json() : null).then(setVaga).catch(() => setVaga(null)).finally(() => setVagaLoading(false))
   }, [vagaId])
 
+  useEffect(() => {
+    if (!user || user.role !== 'candidato') return
+    fetch('/api/candidaturas/minhas', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(json => {
+        const jaInscrito = (json.data || []).some((c: { vaga_id: string | null }) => c.vaga_id === vagaId)
+        if (jaInscrito) { setSubmitted(true); setAlreadyApplied(true) }
+      })
+  }, [user, vagaId])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    if (name === 'telefone') {
+      setFormData(prev => ({ ...prev, telefone: maskPhone(value) }))
+      return
+    }
+    if (name === 'pretensaoSalarial') {
+      setFormData(prev => ({ ...prev, pretensaoSalarial: maskCurrency(value) }))
+      return
+    }
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -44,7 +64,7 @@ export default function VagaDetailPage() {
     setSubmitting(true)
     try {
       const fd = new FormData()
-      fd.append('vaga_id', vagaId); fd.append('telefone', formData.telefone); fd.append('linkedin', formData.linkedin)
+      fd.append('vaga_id', vagaId); fd.append('telefone', formData.telefone.replace(/\D/g, '')); fd.append('linkedin', formData.linkedin)
       fd.append('pretensao_salarial', formData.pretensaoSalarial); fd.append('mensagem', formData.mensagem); fd.append('curriculo', formData.curriculo)
       const response = await fetch('/api/candidaturas/submit', { method: 'POST', body: fd, credentials: 'include' })
       if (response.status === 409) { toast.error('Você já enviou uma candidatura para esta vaga'); setSubmitted(true); return }
@@ -72,6 +92,40 @@ export default function VagaDetailPage() {
     </div>
   )
 
+  if (vaga.status === 'pausada' || vaga.status === 'encerrada') {
+    const isPausada = vaga.status === 'pausada'
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a]">
+        <header className="flex items-center justify-between px-6 py-4 border-b border-[#1e2a5e]">
+          <Link href="/vagas" className="flex items-center gap-2 text-[#00D4FF] hover:text-white transition-colors">
+            <ArrowLeft className="w-4 h-4" /><span>Voltar</span>
+          </Link>
+          <h1 className="text-xl font-bold text-white">Detalhes da Vaga</h1>
+          <div className="w-16" />
+        </header>
+        <main className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center text-center gap-6">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isPausada ? 'bg-yellow-500/10' : 'bg-red-500/10'}`}>
+            <span className={`text-3xl ${isPausada ? 'text-yellow-400' : 'text-red-400'}`}>{isPausada ? '⏸' : '✕'}</span>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">{vaga.titulo}</h2>
+            <p className={`text-sm font-medium mb-3 ${isPausada ? 'text-yellow-400' : 'text-red-400'}`}>
+              {isPausada ? 'Vaga temporariamente pausada' : 'Vaga encerrada'}
+            </p>
+            <p className="text-gray-400 text-sm">
+              {isPausada
+                ? 'Esta vaga está temporariamente suspensa e não está aceitando novas candidaturas no momento.'
+                : 'Esta vaga foi encerrada e não está mais aceitando candidaturas.'}
+            </p>
+          </div>
+          <Link href="/vagas" className="px-5 py-2.5 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">
+            Ver outras vagas disponíveis
+          </Link>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a]">
       <header className="flex items-center justify-between px-6 py-4 border-b border-[#1e2a5e]">
@@ -91,7 +145,9 @@ export default function VagaDetailPage() {
                   <h2 className="text-3xl font-bold text-white mb-1">{vaga.titulo}</h2>
                   <p className="text-lg text-[#00D4FF]">{vaga.empresa?.nome}</p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">Aberta</span>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">
+                  {vaga.status === 'aberta' ? 'Aberta' : vaga.status}
+                </span>
               </div>
               {vaga.categoria && <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs border border-[#1e2a5e] text-gray-400">{vaga.categoria}</span>}
             </div>
@@ -171,7 +227,11 @@ export default function VagaDetailPage() {
             ) : submitted ? (
               <div className={`${cardClass} p-8 flex flex-col items-center text-center gap-4 sticky top-6`}>
                 <div className="w-14 h-14 rounded-full bg-[#10B981]/10 flex items-center justify-center"><CheckCircle className="w-7 h-7 text-[#10B981]" /></div>
-                <div><h3 className="text-lg font-semibold text-white mb-1">Candidatura enviada!</h3><p className="text-sm text-gray-400">Sua candidatura para <strong className="text-white">{vaga.titulo}</strong> foi registrada com sucesso.</p></div>
+                {alreadyApplied ? (
+                  <div><h3 className="text-lg font-semibold text-white mb-1">Você já se candidatou</h3><p className="text-sm text-gray-400">Sua candidatura para <strong className="text-white">{vaga.titulo}</strong> já foi registrada anteriormente.</p></div>
+                ) : (
+                  <div><h3 className="text-lg font-semibold text-white mb-1">Candidatura enviada!</h3><p className="text-sm text-gray-400">Sua candidatura para <strong className="text-white">{vaga.titulo}</strong> foi registrada com sucesso.</p></div>
+                )}
                 <Link href="/vagas" className="px-4 py-2 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">Ver mais vagas</Link>
                 <Link href="/candidato/dashboard" className="px-4 py-2 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all">Meu painel</Link>
               </div>
@@ -180,9 +240,9 @@ export default function VagaDetailPage() {
                 <h3 className="text-lg font-semibold text-white mb-1">Envie sua Candidatura</h3>
                 <p className="text-xs text-gray-500 mb-4">Candidatando como <span className="text-[#00D4FF]">{user.email}</span></p>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Telefone / WhatsApp *</label><input name="telefone" value={formData.telefone} onChange={handleInputChange} placeholder="(11) 98765-4321" required className={inputClass} /></div>
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Telefone / WhatsApp *</label><input name="telefone" value={formData.telefone} onChange={handleInputChange} placeholder="(11) 98765-4321" inputMode="numeric" required className={inputClass} /></div>
                   <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">LinkedIn</label><input name="linkedin" value={formData.linkedin} onChange={handleInputChange} placeholder="linkedin.com/in/seu-perfil" className={inputClass} /></div>
-                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Pretensão Salarial</label><input name="pretensaoSalarial" value={formData.pretensaoSalarial} onChange={handleInputChange} placeholder="R$ 5.000,00" className={inputClass} /></div>
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Pretensão Salarial</label><input name="pretensaoSalarial" value={formData.pretensaoSalarial} onChange={handleInputChange} placeholder="R$ 0,00" inputMode="numeric" className={inputClass} /></div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-300">Currículo (PDF/DOC) *</label>
                     <input id="curriculo" type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="hidden" required />

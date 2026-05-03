@@ -12,6 +12,7 @@ import {
   gerarSlugEmpresa,
   mensagensErro,
 } from '@/lib/validations/empresa'
+import { createDefaultDiscTest } from '@/lib/disc/create-default-test'
 
 /**
  * POST /api/admin/empresas
@@ -122,6 +123,7 @@ async function handlePOST(req: NextRequest) {
   const client = await pool.connect()
   let empresa: Record<string, unknown>
   let usuarioAdmin: Record<string, unknown>
+  let discTestResult: Record<string, unknown> | null = null
 
   try {
     await client.query('BEGIN')
@@ -150,6 +152,9 @@ async function handlePOST(req: NextRequest) {
       ],
     )
     usuarioAdmin = usuarioRows[0]
+
+    // Create default DISC test template for the company
+    discTestResult = await createDefaultDiscTest(client, empresa.id as string)
 
     await client.query('COMMIT')
   } catch (error) {
@@ -180,8 +185,15 @@ async function handlePOST(req: NextRequest) {
         email: usuarioAdmin.email,
         role: usuarioAdmin.role,
       },
+      teste_disc: discTestResult
+        ? {
+            templateId: discTestResult.templateId,
+            nome: discTestResult.templateName,
+            questoes: discTestResult.questionsCount,
+          }
+        : null,
       mensagem:
-        'Empresa criada com sucesso! O usuário admin já pode fazer login com as credenciais fornecidas.',
+        'Empresa criada com sucesso! Um teste DISC padrão foi criado e já está disponível para uso. O usuário admin já pode fazer login com as credenciais fornecidas.',
     },
     201,
   )

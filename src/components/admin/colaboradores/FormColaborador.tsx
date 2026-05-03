@@ -7,6 +7,7 @@ import { useCargosEDepartamentos } from "@/hooks/useCargosEDepartamentos"
 import type { Colaborador, StatusColaborador, OrigemColaborador, Empresa, EscolaridadeColaborador } from "@/types/database"
 import { Eye, EyeOff, RefreshCw, UserCheck } from "lucide-react"
 import { formatBRL, centsToFloat, floatToCents } from "@/lib/utils/currency"
+import { maskPhone, maskCPF, maskDate } from "@/lib/utils/masks"
 
 interface FormColaboradorProps {
   colaborador: Colaborador | null
@@ -42,28 +43,6 @@ const ESCOLARIDADE_LABELS: Record<string, string> = {
   'Pos-graduado': 'Pós-graduado',
 }
 
-function maskPhone(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 2) return d.length ? `(${d}` : ''
-  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
-  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
-}
-
-function maskCPF(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 11)
-  if (d.length <= 3) return d
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
-}
-
-function maskDate(value: string): string {
-  const d = value.replace(/\D/g, '').slice(0, 8)
-  if (d.length <= 2) return d
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`
-}
 
 function isoToDisplay(iso: string): string {
   if (!iso || iso.length < 10) return ''

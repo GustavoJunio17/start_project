@@ -3,7 +3,9 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Zap, AlertCircle, User, Mail, Phone, Lock } from 'lucide-react'
+import { Zap, AlertCircle } from 'lucide-react'
+import { maskPhone, validatePassword } from '@/lib/utils/masks'
+import { PasswordStrength } from '@/components/ui/PasswordStrength'
 
 export default function RegisterPage() {
   return (
@@ -32,13 +34,20 @@ function RegisterForm() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    const { valid } = validatePassword(password)
+    if (!valid) {
+      setError('A senha não atende aos requisitos de segurança')
+      return
+    }
+
     setLoading(true)
 
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, password, telefone, conviteToken }),
+        body: JSON.stringify({ nome, email, password, telefone: telefone.replace(/\D/g, ''), conviteToken }),
       })
 
       const data = await res.json()
@@ -120,8 +129,9 @@ function RegisterForm() {
                 id="telefone"
                 placeholder="(00) 00000-0000"
                 value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
+                onChange={(e) => setTelefone(maskPhone(e.target.value))}
                 disabled={loading}
+                inputMode="numeric"
                 className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#00D4FF]/60 focus:ring-1 focus:ring-[#00D4FF]/15 transition-colors disabled:opacity-60"
               />
             </div>
@@ -133,14 +143,15 @@ function RegisterForm() {
               <input
                 id="password"
                 type="password"
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mínimo 8 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 disabled={loading}
                 className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#00D4FF]/60 focus:ring-1 focus:ring-[#00D4FF]/15 transition-colors disabled:opacity-60"
               />
+              <PasswordStrength password={password} />
             </div>
 
             {error && (

@@ -412,7 +412,7 @@ export function EmpresaDetailsModal({
               <DialogTitle>Deletar Empresa</DialogTitle>
             </DialogHeader>
             <p className="text-muted-foreground">
-              Tem certeza que deseja deletar "{empresa.nome}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja deletar &quot;{empresa.nome}&quot;? Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-2 justify-end">
               <Button
