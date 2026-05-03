@@ -19,7 +19,7 @@ interface ProtectedComponentProps {
 /**
  * Componente para proteger content por role
  * @example
- * <ProtectedByRole allowedRoles={['user_empresa', 'gestor_rh']}>
+ * <ProtectedByRole allowedRoles={['admin', 'gestor_rh']}>
  *   <h1>Apenas admin e gestor_rh veem isto</h1>
  * </ProtectedByRole>
  */
@@ -179,7 +179,6 @@ export function UserRoleBadge() {
     super_admin: 'Super Admin',
     super_gestor: 'Super Gestor',
     admin: 'Admin da Empresa',
-    user_empresa: 'Admin (Empresa)',
     gestor_rh: 'Gestor RH',
     colaborador: 'Colaborador',
     candidato: 'Candidato',
@@ -189,7 +188,6 @@ export function UserRoleBadge() {
     super_admin: 'bg-red-100 text-red-800',
     super_gestor: 'bg-orange-100 text-orange-800',
     admin: 'bg-blue-100 text-blue-800',
-    user_empresa: 'bg-indigo-100 text-indigo-800',
     gestor_rh: 'bg-purple-100 text-purple-800',
     colaborador: 'bg-green-100 text-green-800',
     candidato: 'bg-gray-100 text-gray-800',
@@ -214,7 +212,7 @@ export function CriarVagaPage() {
 
   return (
     <ProtectedByRole
-      allowedRoles={['super_admin', 'super_gestor', 'user_empresa', 'gestor_rh']}
+      allowedRoles={['super_admin', 'super_gestor', 'admin', 'gestor_rh']}
       fallback={<AccessDenied message="Apenas admins e gestores RH podem criar vagas" />}
     >
       <div>
@@ -332,7 +330,7 @@ export function Dashboard() {
       </ProtectedByRole>
 
       {/* Admin/Gestor RH */}
-      <ProtectedByRole allowedRoles={['user_empresa', 'gestor_rh']}>
+      <ProtectedByRole allowedRoles={['admin', 'gestor_rh']}>
         <div className="mt-8 p-4 bg-purple-50 rounded">
           <h2>Dashboard da Empresa</h2>
           <p>Vagas abertas, candidatos pendentes, etc</p>

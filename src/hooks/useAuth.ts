@@ -89,7 +89,6 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
   super_admin: 1,
   super_gestor: 2,
   admin: 2,
-  user_empresa: 3,
   gestor_rh: 4,
   colaborador: 5,
   candidato: 6,
@@ -109,7 +108,6 @@ export function getHomePath(role: Role): string {
     case 'super_gestor':
       return '/admin/dashboard'
     case 'admin':
-    case 'user_empresa':
     case 'gestor_rh':
       return '/empresa/dashboard'
     case 'colaborador':

@@ -1,11 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { createClient } from "@/lib/db/client"
+import { useAuth } from "@/hooks/useAuth"
 import type { User, Role } from "@/types/database"
 
 interface FormUsuarioProps {
@@ -23,7 +21,7 @@ interface Empresa {
 const ROLE_LABELS: Record<string, string> = {
   'super_admin': 'Super Admin',
   'super_gestor': 'Super Gestor',
-  'user_empresa': 'Admin (Empresa)',
+  'admin': 'Admin (Empresa)',
   'gestor_rh': 'Gestor RH',
 }
 
@@ -31,6 +29,8 @@ export function FormUsuario({ user, mode = 'convidar', onClose, onSaved }: FormU
   const [loading, setLoading] = useState(false)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const supabase = createClient()
+  const { user: currentUser } = useAuth()
+  const isSuperGestor = currentUser?.role === 'super_gestor'
 
   const [formData, setFormData] = useState({
     nome_completo: user?.nome_completo || '',
@@ -86,7 +86,7 @@ export function FormUsuario({ user, mode = 'convidar', onClose, onSaved }: FormU
           body: JSON.stringify({
             nome_completo: formData.nome_completo,
             role: formData.role,
-            ...(formData.empresa_id && (formData.role === 'user_empresa' || formData.role === 'gestor_rh') ? { empresa_id: formData.empresa_id } : {}),
+            ...(formData.empresa_id && (formData.role === 'admin' || formData.role === 'gestor_rh') ? { empresa_id: formData.empresa_id } : {}),
             ...(formData.senha ? { password: formData.senha } : {})
           })
         })
@@ -118,108 +118,128 @@ export function FormUsuario({ user, mode = 'convidar', onClose, onSaved }: FormU
   }
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>
-            {user ? 'Editar Usuário' : mode === 'criar' ? 'Criar Novo Usuário' : 'Convidar Novo Usuário'}
-          </DialogTitle>
-          <DialogDescription>
-            {user ? 'Atualize as informações do usuário abaixo.' : mode === 'criar' ? 'Preencha os dados do novo usuário.' : 'Preencha os dados do novo usuário para enviar um convite.'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Nome Completo</label>
-            <Input 
-              value={formData.nome_completo} 
-              onChange={e => setFormData(f => ({...f, nome_completo: e.target.value}))} 
-              placeholder="João da Silva"
-              required
-            />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+        <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl shadow-2xl w-full max-w-md my-8 relative flex flex-col animate-in zoom-in-95 duration-200">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-[#0A0E27] transition-colors"
+          >
+            ✕
+          </button>
+          
+          <div className="px-6 pt-6 pb-4 border-b border-[#1e2a5e]">
+            <h2 className="text-xl font-bold text-white">
+              {user ? 'Editar Usuário' : mode === 'criar' ? 'Criar Novo Usuário' : 'Convidar Novo Usuário'}
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              {user ? 'Atualize as informações do usuário abaixo.' : mode === 'criar' ? 'Preencha os dados do novo usuário.' : 'Preencha os dados do novo usuário para enviar um convite.'}
+            </p>
           </div>
           
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <Input 
-              type="email"
-              value={formData.email} 
-              onChange={e => setFormData(f => ({...f, email: e.target.value}))} 
-              placeholder="joao@empresa.com"
-              disabled={!!user} // Email usually doesn't change directly
-              required
-            />
-            {!!user && <p className="text-xs text-muted-foreground mt-1">O email não pode ser alterado diretamente.</p>}
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Nome Completo</label>
+                <input 
+                  type="text"
+                  value={formData.nome_completo} 
+                  onChange={e => setFormData(f => ({...f, nome_completo: e.target.value}))} 
+                  placeholder="João da Silva"
+                  required
+                  className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Email</label>
+                <input 
+                  type="email"
+                  value={formData.email} 
+                  onChange={e => setFormData(f => ({...f, email: e.target.value}))} 
+                  placeholder="joao@empresa.com"
+                  disabled={!!user}
+                  required
+                  className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                {!!user && <p className="text-xs text-gray-500 mt-1">O email não pode ser alterado diretamente.</p>}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-300">Nível de Acesso (Role)</label>
+                <div className="relative">
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData(f => ({...f, role: e.target.value as Role}))}
+                    className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all appearance-none cursor-pointer"
+                  >
+                    {!isSuperGestor && <option value="super_admin" className="bg-[#111633]">Super Admin</option>}
+                    {!isSuperGestor && <option value="super_gestor" className="bg-[#111633]">Super Gestor</option>}
+                    <option value="admin" className="bg-[#111633]">Admin (Empresa)</option>
+                    <option value="gestor_rh" className="bg-[#111633]">Gestor RH</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+              </div>
+
+              {(formData.role === 'admin' || formData.role === 'gestor_rh') && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Empresa *</label>
+                  <div className="relative">
+                    <select
+                      value={formData.empresa_id}
+                      onChange={(e) => setFormData(f => ({...f, empresa_id: e.target.value}))}
+                      className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled className="bg-[#111633] text-gray-500">Selecione uma empresa</option>
+                      {Array.isArray(empresas) && empresas.map(emp => (
+                        <option key={emp.id} value={emp.id} className="bg-[#111633]">{emp.nome}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(mode === 'criar' || user) && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">{mode === 'criar' ? 'Senha *' : 'Nova Senha (Opcional)'}</label>
+                  <input
+                    type="password"
+                    value={formData.senha}
+                    onChange={e => setFormData(f => ({...f, senha: e.target.value}))}
+                    placeholder={mode === 'criar' ? 'Mínimo 6 caracteres' : 'Deixe em branco para manter a atual'}
+                    required={mode === 'criar'}
+                    className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
+                  />
+                </div>
+              )}
+
+              <div className="pt-6 flex items-center justify-end gap-3 border-t border-[#1e2a5e] mt-6">
+                <button 
+                  type="button" 
+                  onClick={onClose} 
+                  disabled={loading}
+                  className="px-4 py-2.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-[#0A0E27] transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading || ((formData.role === 'admin' || formData.role === 'gestor_rh') && !formData.empresa_id) || (mode === 'criar' && !formData.senha)}
+                  className="px-6 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white hover:shadow-[0_0_15px_rgba(0,212,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  {loading ? 'Salvando...' : user ? 'Atualizar' : mode === 'criar' ? 'Criar' : 'Convidar'}
+                </button>
+              </div>
+            </form>
           </div>
-
-          <div>
-            <label className="text-sm font-medium">Nível de Acesso (Role)</label>
-            <Select
-              value={formData.role}
-              onValueChange={(val) => val !== null && setFormData(f => ({...f, role: val as Role}))}
-            >
-              <SelectTrigger>
-                <span className="truncate">
-                  {ROLE_LABELS[formData.role] || 'Selecione um nível'}
-                </span>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="super_gestor">Super Gestor</SelectItem>
-                <SelectItem value="user_empresa">Admin (Empresa)</SelectItem>
-                <SelectItem value="gestor_rh">Gestor RH</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {(formData.role === 'user_empresa' || formData.role === 'gestor_rh') && (
-            <div>
-              <label className="text-sm font-medium">Empresa *</label>
-              <Select
-                value={formData.empresa_id}
-                onValueChange={(val) => setFormData(f => ({...f, empresa_id: val as string}))}
-              >
-                <SelectTrigger>
-                  <span className="truncate">
-                    {Array.isArray(empresas) && empresas.find(e => e.id === formData.empresa_id)?.nome || 'Selecione uma empresa'}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(empresas) && empresas.map(emp => (
-                    <SelectItem key={emp.id} value={emp.id}>{emp.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {(mode === 'criar' || user) && (
-            <div>
-              <label className="text-sm font-medium">{mode === 'criar' ? 'Senha *' : 'Nova Senha (Opcional)'}</label>
-              <Input
-                type="password"
-                value={formData.senha}
-                onChange={e => setFormData(f => ({...f, senha: e.target.value}))}
-                placeholder={mode === 'criar' ? 'Mínimo 6 caracteres' : 'Deixe em branco para manter a atual'}
-                required={mode === 'criar'}
-              />
-            </div>
-          )}
-
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || ((formData.role === 'user_empresa' || formData.role === 'gestor_rh') && !formData.empresa_id) || (mode === 'criar' && !formData.senha)}
-            >
-              {loading ? 'Salvando...' : user ? 'Atualizar' : mode === 'criar' ? 'Criar' : 'Convidar'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </>
   )
 }

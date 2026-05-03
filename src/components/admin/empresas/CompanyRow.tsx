@@ -1,8 +1,6 @@
 'use client'
 
 import { Empresa } from './types'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { ActionMenu } from './ActionMenu'
 import { Users, Briefcase, MessageSquare } from 'lucide-react'
 
@@ -27,7 +25,7 @@ export function CompanyRow({
 }: CompanyRowProps) {
   const statusColors: Record<string, string> = {
     ativa: 'bg-success/20 text-success',
-    inativa: 'bg-muted/50 text-muted-foreground',
+    inativa: 'bg-gray-500/20 text-gray-400',
     trial: 'bg-amber-500/20 text-amber-600',
     bloqueada: 'bg-destructive/20 text-destructive',
   }
@@ -41,14 +39,15 @@ export function CompanyRow({
 
   return (
     <tr
-      className="border-b border-border hover:bg-background/50 transition cursor-pointer group"
+      className="border-b border-[#1e2a5e] hover:bg-[#111633] transition cursor-pointer group"
       onClick={() => onView(empresa)}
     >
       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-        <Checkbox
+        <input
+          type="checkbox"
           checked={isSelected}
-          onCheckedChange={() => onSelect(empresa.id)}
-          className="bg-background border-border"
+          onChange={() => onSelect(empresa.id)}
+          className="w-4 h-4 rounded border-[#1e2a5e] bg-[#0A0E27] text-[#00D4FF] focus:ring-[#00D4FF]/50 focus:ring-offset-0 cursor-pointer transition-all"
         />
       </td>
 
@@ -59,46 +58,48 @@ export function CompanyRow({
             <span className="text-white font-semibold text-sm">{empresa.nome.charAt(0).toUpperCase()}</span>
           </div>
           <div>
-            <p className="font-medium text-foreground">{empresa.nome}</p>
-            <p className="text-xs text-muted-foreground">{empresa.segmento}</p>
+            <p className="font-medium text-white">{empresa.nome}</p>
+            <p className="text-xs text-gray-400">{empresa.segmento}</p>
           </div>
         </div>
       </td>
 
       {/* CNPJ */}
-      <td className="px-6 py-4 text-sm text-muted-foreground font-mono">{empresa.cnpj || '-'}</td>
+      <td className="px-6 py-4 text-sm text-gray-400 font-mono">{empresa.cnpj || '-'}</td>
 
-      {/* Plano */}
       <td className="px-6 py-4">
-        <Badge className={`${planoColors[empresa.plano]} border-0 capitalize`}>{empresa.plano}</Badge>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${planoColors[empresa.plano]}`}>
+          {empresa.plano}
+        </span>
       </td>
 
-      {/* Status */}
       <td className="px-6 py-4">
-        <Badge className={`${statusColors[empresa.status]} border-0 capitalize`}>{empresa.status}</Badge>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusColors[empresa.status]}`}>
+          {empresa.status}
+        </span>
       </td>
 
       {/* Usuários */}
       <td className="px-6 py-4">
         <div className="flex items-center justify-center gap-2">
-          <Users className="w-4 h-4 text-primary/60" />
-          <span className="text-sm font-medium text-foreground">{empresa.total_usuarios}</span>
+          <Users className="w-4 h-4 text-[#00D4FF]" />
+          <span className="text-sm font-medium text-white">{empresa.total_usuarios}</span>
         </div>
       </td>
 
       {/* Vagas */}
       <td className="px-6 py-4">
         <div className="flex items-center justify-center gap-2">
-          <Briefcase className="w-4 h-4 text-primary/60" />
-          <span className="text-sm font-medium text-foreground">{empresa.total_vagas}</span>
+          <Briefcase className="w-4 h-4 text-[#00D4FF]" />
+          <span className="text-sm font-medium text-white">{empresa.total_vagas}</span>
         </div>
       </td>
 
       {/* Candidatos */}
       <td className="px-6 py-4">
         <div className="flex items-center justify-center gap-2">
-          <MessageSquare className="w-4 h-4 text-primary/60" />
-          <span className="text-sm font-medium text-foreground">{empresa.total_candidatos}</span>
+          <MessageSquare className="w-4 h-4 text-[#00D4FF]" />
+          <span className="text-sm font-medium text-white">{empresa.total_candidatos}</span>
         </div>
       </td>
 

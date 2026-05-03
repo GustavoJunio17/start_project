@@ -23,8 +23,8 @@ const PUBLIC_PATHS = [
 
 const ROUTE_ROLES: [string, string[]][] = [
   ['/admin', ['super_admin', 'super_gestor']],
-  ['/empresa', ['user_empresa', 'gestor_rh', 'admin', 'super_admin', 'super_gestor']],
-  ['/gestor', ['gestor_rh', 'colaborador', 'user_empresa', 'admin', 'super_admin', 'super_gestor']],
+  ['/empresa', ['admin', 'gestor_rh', 'super_admin', 'super_gestor']],
+  ['/gestor', ['gestor_rh', 'colaborador', 'admin', 'super_admin', 'super_gestor']],
   ['/candidato', ['candidato']],
   ['/api/admin', ['super_admin', 'super_gestor']],
 ]
@@ -83,7 +83,6 @@ export async function proxy(req: NextRequest) {
         super_admin: '/admin/dashboard',
         super_gestor: '/admin/dashboard',
         admin: '/empresa/dashboard',
-        user_empresa: '/empresa/dashboard',
         gestor_rh: '/empresa/dashboard',
         candidato: '/candidato/dashboard',
         colaborador: '/gestor/dashboard',

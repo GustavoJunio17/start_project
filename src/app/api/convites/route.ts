@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
 
   let user
   try {
-    user = await requireRole(['super_admin', 'super_gestor', 'user_empresa'])
+    user = await requireRole(['super_admin', 'super_gestor', 'admin'])
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro'
     if (msg === 'UNAUTHORIZED') return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'E-mail e role sao obrigatorios' }, { status: 400 })
   }
 
-  const validRoles = ['user_empresa', 'gestor_rh', 'colaborador', 'candidato']
+  const validRoles = ['admin', 'gestor_rh', 'colaborador', 'candidato']
   if (!validRoles.includes(role)) {
     return NextResponse.json({ error: `Role invalido. Use: ${validRoles.join(', ')}` }, { status: 400 })
   }
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireRole(['super_admin', 'super_gestor', 'user_empresa'])
+    user = await requireRole(['super_admin', 'super_gestor', 'admin'])
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro'
     if (msg === 'UNAUTHORIZED') return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })

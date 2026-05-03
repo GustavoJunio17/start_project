@@ -4,11 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 
@@ -55,14 +51,14 @@ export default function NovoTemplatePage() {
 
     setSaving(true)
     try {
-      const { data: insertedTemplates, error: templateError } = await supabase
+      const { data: insertedTemplates, error: templateError } = await (supabase
         .from('templates_testes')
         .insert({
-          empresa_id: user.empresa_id,
+          empresa_id: user!.empresa_id,
           nome: templateForm.nome,
           descricao: templateForm.descricao || null,
-          questoes_ids: Array(templateQuestoes.length).fill(''),
-        })
+          questoes_ids: Array(templateQuestoes.length).fill('') as string[],
+        }) as any)
         .select()
 
       if (templateError || !insertedTemplates || insertedTemplates.length === 0) {
@@ -102,82 +98,60 @@ export default function NovoTemplatePage() {
       <Toaster />
       <div className="max-w-4xl mx-auto space-y-6 pb-12">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={() => router.back()}>
+          <button type="button" onClick={() => router.back()} className="p-1.5 rounded-lg border border-[#1e2a5e] text-gray-400 hover:text-white hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-4 h-4" />
-          </Button>
+          </button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Criar Novo Template</h1>
-            <p className="text-muted-foreground">Crie um template de testes com suas questões DISC</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Criar Novo Template</h1>
+            <p className="text-gray-400">Crie um template de testes com suas questões DISC</p>
           </div>
         </div>
 
         <form onSubmit={handleCreateTemplate}>
           <div className="grid gap-6">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Informações do Template</CardTitle>
-                <CardDescription>Dados básicos do template de testes</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nome do Template *</Label>
-                  <Input
-                    value={templateForm.nome}
-                    onChange={(e) => setTemplateForm({ ...templateForm, nome: e.target.value })}
-                    required
-                    className="bg-background"
-                    placeholder="Ex: Avaliação DISC Inicial, Teste Pleno, etc"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Descrição</Label>
-                  <Textarea
-                    value={templateForm.descricao}
-                    onChange={(e) => setTemplateForm({ ...templateForm, descricao: e.target.value })}
-                    className="bg-background"
-                    placeholder="Descrição opcional do template"
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl p-5 space-y-4">
+              <div>
+                <p className="font-semibold text-white">Informações do Template</p>
+                <p className="text-sm text-gray-400">Dados básicos do template de testes</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">Nome do Template *</label>
+                <input value={templateForm.nome} onChange={(e) => setTemplateForm({ ...templateForm, nome: e.target.value })} required
+                  className="w-full px-3 py-2.5 bg-[#0A0E27] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors placeholder-gray-600"
+                  placeholder="Ex: Avaliação DISC Inicial, Teste Pleno, etc" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">Descrição</label>
+                <textarea value={templateForm.descricao} onChange={(e) => setTemplateForm({ ...templateForm, descricao: e.target.value })} rows={3}
+                  className="w-full px-3 py-2.5 bg-[#0A0E27] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors placeholder-gray-600 resize-none"
+                  placeholder="Descrição opcional do template" />
+              </div>
+            </div>
 
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-lg">Questões do Template ({templateQuestoes.length})</CardTitle>
-                <CardDescription>Adicione as questões que farão parte deste template</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl p-5 space-y-6">
+              <div>
+                <p className="font-semibold text-white">Questões do Template ({templateQuestoes.length})</p>
+                <p className="text-sm text-gray-400">Adicione as questões que farão parte deste template</p>
+              </div>
                 {/* Lista de questões adicionadas */}
                 {templateQuestoes.length > 0 && (
                   <div className="space-y-3">
-                    <div className="text-sm font-medium text-muted-foreground">Questões Adicionadas:</div>
+                    <p className="text-sm font-medium text-gray-400">Questões Adicionadas:</p>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {templateQuestoes.map((q, idx) => (
-                        <div key={idx} className="p-4 rounded bg-background border border-border">
+                        <div key={idx} className="p-4 rounded-lg bg-[#0A0E27] border border-[#1e2a5e]">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex-1">
-                              <p className="text-sm font-medium text-foreground mb-2">{idx + 1}. {q.pergunta}</p>
+                              <p className="text-sm font-medium text-white mb-2">{idx + 1}. {q.pergunta}</p>
                               <div className="grid grid-cols-2 gap-2">
-                                <p className="text-xs text-muted-foreground">
-                                  <span style={{ color: '#EF4444' }} className="font-medium">D:</span> {q.opcao_d}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  <span style={{ color: '#F59E0B' }} className="font-medium">I:</span> {q.opcao_i}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  <span style={{ color: '#10B981' }} className="font-medium">S:</span> {q.opcao_s}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  <span style={{ color: '#0066FF' }} className="font-medium">C:</span> {q.opcao_c}
-                                </p>
+                                <p className="text-xs text-gray-500"><span className="font-bold text-red-400">D:</span> {q.opcao_d}</p>
+                                <p className="text-xs text-gray-500"><span className="font-bold text-yellow-400">I:</span> {q.opcao_i}</p>
+                                <p className="text-xs text-gray-500"><span className="font-bold text-green-400">S:</span> {q.opcao_s}</p>
+                                <p className="text-xs text-gray-500"><span className="font-bold text-blue-400">C:</span> {q.opcao_c}</p>
                               </div>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveQuestionFromTemplate(idx)}
-                              className="ml-2 text-destructive hover:text-destructive/80"
-                            >
+                            <button type="button" onClick={() => handleRemoveQuestionFromTemplate(idx)}
+                              className="ml-2 p-1 text-gray-500 hover:text-[#EF4444] transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -188,64 +162,48 @@ export default function NovoTemplatePage() {
                 )}
 
                 {/* Formulário para adicionar nova questão */}
-                <div className="border-t border-border pt-6">
-                  <div className="text-sm font-medium text-muted-foreground mb-4">Adicionar Nova Questão:</div>
-                  <div className="space-y-4 p-4 bg-background border border-border rounded-lg">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Pergunta *</Label>
-                      <Textarea
-                        value={newQuestion.pergunta}
-                        onChange={(e) => setNewQuestion({ ...newQuestion, pergunta: e.target.value })}
-                        className="bg-card text-sm"
-                        placeholder="Digite a pergunta"
-                        rows={2}
-                      />
+                <div className="border-t border-[#1e2a5e] pt-6">
+                  <p className="text-sm font-medium text-gray-400 mb-4">Adicionar Nova Questão:</p>
+                  <div className="space-y-4 p-4 bg-[#0A0E27] border border-[#1e2a5e] rounded-xl">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-300">Pergunta *</label>
+                      <textarea value={newQuestion.pergunta} onChange={(e) => setNewQuestion({ ...newQuestion, pergunta: e.target.value })} rows={2}
+                        className="w-full px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors placeholder-gray-600 resize-none"
+                        placeholder="Digite a pergunta" />
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
-                      {(
-                        [
-                          { key: 'opcao_d', label: 'D — Dominância', color: '#EF4444' },
-                          { key: 'opcao_i', label: 'I — Influência', color: '#F59E0B' },
-                          { key: 'opcao_s', label: 'S — Estabilidade', color: '#10B981' },
-                          { key: 'opcao_c', label: 'C — Conformidade', color: '#0066FF' },
-                        ] as const
-                      ).map((o) => (
-                        <div key={o.key} className="space-y-2">
-                          <Label className="text-xs font-medium" style={{ color: o.color }}>
-                            {o.label} *
-                          </Label>
-                          <Input
-                            value={newQuestion[o.key]}
-                            onChange={(e) => setNewQuestion({ ...newQuestion, [o.key]: e.target.value })}
-                            className="bg-card text-sm h-9"
-                            placeholder="Opção"
-                          />
+                      {([
+                        { key: 'opcao_d', label: 'D — Dominância', color: 'text-red-400' },
+                        { key: 'opcao_i', label: 'I — Influência', color: 'text-yellow-400' },
+                        { key: 'opcao_s', label: 'S — Estabilidade', color: 'text-green-400' },
+                        { key: 'opcao_c', label: 'C — Conformidade', color: 'text-blue-400' },
+                      ] as const).map((o) => (
+                        <div key={o.key} className="space-y-1.5">
+                          <label className={`text-xs font-medium ${o.color}`}>{o.label} *</label>
+                          <input value={newQuestion[o.key]} onChange={(e) => setNewQuestion({ ...newQuestion, [o.key]: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors placeholder-gray-600"
+                            placeholder="Opção" />
                         </div>
                       ))}
                     </div>
-
-                    <Button
-                      type="button"
-                      onClick={handleAddQuestionToTemplate}
-                      variant="outline"
-                      className="w-full text-sm"
+                    <button type="button" onClick={handleAddQuestionToTemplate}
                       disabled={!newQuestion.pergunta.trim() || !newQuestion.opcao_d.trim() || !newQuestion.opcao_i.trim() || !newQuestion.opcao_s.trim() || !newQuestion.opcao_c.trim()}
-                    >
-                      <Plus className="w-4 h-4 mr-2" /> Adicionar Questão
-                    </Button>
+                      className="w-full flex items-center justify-center gap-2 py-2.5 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                      <Plus className="w-4 h-4" /> Adicionar Questão
+                    </button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </div>
 
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => router.back()} disabled={saving}>
+            <div className="flex justify-end gap-3">
+              <button type="button" onClick={() => router.back()} disabled={saving}
+                className="px-4 py-2 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all disabled:opacity-50">
                 Cancelar
-              </Button>
-              <Button type="submit" className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF] gap-2" disabled={saving || !templateForm.nome.trim() || templateQuestoes.length === 0}>
-                {saving ? 'Criando...' : <><Save className="w-4 h-4" /> Criar Template</>}
-              </Button>
+              </button>
+              <button type="submit" disabled={saving || !templateForm.nome.trim() || templateQuestoes.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50">
+                <Save className="w-4 h-4" /> {saving ? 'Criando...' : 'Criar Template'}
+              </button>
             </div>
           </div>
         </form>

@@ -213,7 +213,7 @@ export function ListarEmpresas() {
   const activeFiltersCount = Object.values(filters).filter((v) => v !== '').length
 
   if (authLoading) {
-    return <div className="p-8 text-center text-muted-foreground">Carregando...</div>
+    return <div className="p-8 text-center text-gray-400">Carregando...</div>
   }
 
   if (erro) {

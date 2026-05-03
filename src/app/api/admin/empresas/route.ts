@@ -141,7 +141,7 @@ async function handlePOST(req: NextRequest) {
         email_admin,
         senhaHash,
         nome || email_admin.split('@')[0],
-        'user_empresa',
+        'admin',
         empresa.id,
         nome,
         JSON.stringify(permissoesAdmin),

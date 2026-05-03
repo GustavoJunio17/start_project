@@ -14,7 +14,7 @@ async function handlePOST(request: NextRequest) {
     return errorResponse('Email, nome_completo, role e empresa_id obrigatorios', 400)
   }
 
-  if (!['user_empresa', 'gestor_rh', 'colaborador'].includes(role)) {
+  if (!['admin', 'gestor_rh', 'colaborador'].includes(role)) {
     return errorResponse('Role invalida. Use admin, gestor_rh ou colaborador', 400)
   }
 

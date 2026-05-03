@@ -23,7 +23,7 @@ export default function SetupAdminPage() {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'super_admin' | 'super_gestor' | 'user_empresa'>('super_admin')
+  const [role, setRole] = useState<'super_admin' | 'super_gestor' | 'admin'>('super_admin')
   const [secret, setSecret] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -93,7 +93,7 @@ export default function SetupAdminPage() {
             <label className="block text-sm text-gray-400 mb-1">Role</label>
             <select
               value={role}
-              onChange={e => setRole(e.target.value as 'super_admin' | 'super_gestor' | 'user_empresa')}
+              onChange={e => setRole(e.target.value as 'super_admin' | 'super_gestor' | 'admin')}
               className="w-full px-3 py-2 rounded-lg bg-[#0A0E27] border border-[#1e2a5e] text-white text-sm focus:outline-none focus:border-[#00D4FF]"
             >
               <option value="super_admin">Super Admin</option>

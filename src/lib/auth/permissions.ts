@@ -57,18 +57,6 @@ export const rolePermissions: Record<Role, {
     isColaborador: false,
     isCandidato: false,
   },
-  user_empresa: {
-    canManageVagas: true,
-    canManageCandidatos: true,
-    canManageUsers: true,
-    canManageEmpresa: true,
-    isSuperAdmin: false,
-    isSuperGestor: false,
-    isAdmin: true,
-    isGestorRH: false,
-    isColaborador: false,
-    isCandidato: false,
-  },
   gestor_rh: {
     canManageVagas: true,
     canManageCandidatos: true,

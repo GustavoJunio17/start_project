@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -83,8 +82,8 @@ export default function FeedbacksPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Feedbacks</h1>
-          <p className="text-muted-foreground">{feedbacks.length} feedbacks enviados</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Feedbacks</h1>
+          <p className="text-gray-400 text-sm mt-1">{feedbacks.length} feedbacks enviados</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger render={<Button className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]" />}>
@@ -110,7 +109,7 @@ export default function FeedbacksPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Destinatário</Label>
-                  <Select value={targetId} onValueChange={setTargetId}>
+                  <Select value={targetId} onValueChange={(val) => setTargetId(val || "")}>
                     <SelectTrigger className="bg-background">
                       <span className={!targetId ? 'text-muted-foreground' : ''}>
                         {targetId
@@ -146,14 +145,15 @@ export default function FeedbacksPage() {
 
       <div className="space-y-3">
         {loading ? (
-          <p className="text-center text-muted-foreground py-8">Carregando...</p>
+          <div className="flex items-center justify-center h-32">
+            <div className="w-7 h-7 border-2 border-[#00D4FF]/20 border-t-[#00D4FF] rounded-full animate-spin" />
+          </div>
         ) : paginated.map(fb => (
-          <Card key={fb.id} className="bg-card border-border">
-            <CardContent className="p-4">
+          <div key={fb.id} className="bg-[#111633] border border-[#1e2a5e] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#00D4FF]" />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-gray-500">
                     {fb.tipo === 'interno_colaborador' ? 'Colaborador' : 'Candidato'} - {new Date(fb.created_at).toLocaleDateString('pt-BR')}
                   </span>
                 </div>
@@ -165,17 +165,16 @@ export default function FeedbacksPage() {
                   { label: 'Continuar', value: fb.continuar, icon: RefreshCw, color: '#0066FF' },
                   { label: 'Acao', value: fb.acao, icon: Zap, color: '#F59E0B' },
                 ].map(q => (
-                  <div key={q.label} className="p-2 rounded bg-background">
-                    <div className="flex items-center gap-1 mb-1">
+                  <div key={q.label} className="p-2.5 rounded-lg bg-[#0A0E27] border border-[#1e2a5e]">
+                    <div className="flex items-center gap-1 mb-1.5">
                       <q.icon className="w-3 h-3" style={{ color: q.color }} />
-                      <span className="text-xs font-medium" style={{ color: q.color }}>{q.label}</span>
+                      <span className="text-xs font-semibold" style={{ color: q.color }}>{q.label}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{q.value || '-'}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">{q.value || '-'}</p>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+          </div>
         ))}
       </div>
       <Pagination

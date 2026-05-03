@@ -5,7 +5,7 @@ import { RoleGuard } from '@/components/security/RoleGuard'
 
 export function EmpresaLayoutClient({ children }: { children: React.ReactNode }) {
   return (
-    <RoleGuard allowedRoles={['user_empresa', 'gestor_rh', 'admin']}>
+    <RoleGuard allowedRoles={['admin', 'gestor_rh']}>
       <AppLayout>{children}</AppLayout>
     </RoleGuard>
   )

@@ -23,7 +23,7 @@ async function handleGET(req: NextRequest) {
   if (user.role === 'super_admin' || user.role === 'super_gestor') {
     // Super admins veem todos
     query = query.slice(0, -6) // remove "WHERE"
-  } else if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+  } else if (user.role === 'admin' || user.role === 'gestor_rh') {
     // Admins veem candidatos da sua empresa
     query += 'c.empresa_id = $1'
     params.push(user.empresa_id as string)

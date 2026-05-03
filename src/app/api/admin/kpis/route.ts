@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })
   }
 
-  if (!['super_admin', 'super_gestor', 'user_empresa'].includes(user.role)) {
+  if (!['super_admin', 'super_gestor', 'admin'].includes(user.role)) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 

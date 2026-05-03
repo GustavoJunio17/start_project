@@ -27,7 +27,7 @@ async function handleGET(req: NextRequest, context?: { params?: { id: string } }
   // Adicionar filtro de permissão se não for super admin/gestor
   if (user.role !== 'super_admin' && user.role !== 'gestor_admin') {
     query += ' AND ('
-    if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+    if (user.role === 'admin' || user.role === 'gestor_rh') {
       query += 'empresa_id = $2 OR status != $3'
       queryParams.push(user.empresa_id as string)
       queryParams.push('rascunho')

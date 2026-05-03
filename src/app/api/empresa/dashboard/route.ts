@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Filtrar colaboradores por setores do gestor_rh
     const colaboradoresFiltrados = user.role === 'gestor_rh' && setorNomes.length > 0
-      ? (colaboradores || []).filter(c => c.departamento && setorNomes.includes(c.departamento))
+      ? (colaboradores || []).filter(c => c.departamento && setorNomes.includes(c.departamento as string))
       : (colaboradores || [])
 
     // Buscar candidaturas públicas
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       const publicos = candidaturasPublicas.filter(c => c.vaga_id === v.id).length
       return {
         id: v.id,
-        titulo: v.titulo.length > 15 ? v.titulo.substring(0, 15) + '...' : v.titulo,
+        titulo: (v.titulo as string).length > 15 ? (v.titulo as string).substring(0, 15) + '...' : (v.titulo as string),
         candidatos: comLogin + publicos,
       }
     })

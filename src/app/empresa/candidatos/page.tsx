@@ -4,17 +4,23 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useCargosEDepartamentos } from '@/hooks/useCargosEDepartamentos'
-import { Card, CardContent } from '@/components/ui/card'
+import { createClient } from '@/lib/db/client'
 import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Download, CheckCircle, ThumbsDown, Star, MoreVertical, X } from 'lucide-react'
+import { Search, Download, CheckCircle, ThumbsDown, Star, MoreVertical, X, Link2, Copy, Eye, EyeOff, RefreshCw, UserCheck } from 'lucide-react'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { toast, Toaster } from 'sonner'
+import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
+import { DISCBars } from '@/components/disc/DISCChart'
+import type { Candidato, Vaga } from '@/types/database'
+
+type CandidatoAvaliado = Candidato
+
+const supabase = createClient()
 
 interface Candidatura {
   id: string
@@ -62,6 +68,7 @@ export default function CandidatosPage() {
   const [candidaturaForTest, setCandidaturaForTest] = useState<Candidatura | null>(null)
   const [testLink, setTestLink] = useState('')
   const [showTestLink, setShowTestLink] = useState(false)
+  const [testeLinksExistentes, setTesteLinksExistentes] = useState<{ id: string; token: string; respondido: boolean; created_at: string; template_nome: string; expires_at: string }[]>([])
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false)
   const [candidaturaForApproval, setCandidaturaForApproval] = useState<Candidatura | null>(null)
   const [formData, setFormData] = useState({
@@ -71,46 +78,98 @@ export default function CandidatosPage() {
     modelo_trabalho: 'presencial',
     regime_contrato: 'CLT',
     salario: '',
+    criar_conta: true,
+    email_conta: '',
+    senha_conta: '',
   })
+  const [showSenhaConta, setShowSenhaConta] = useState(false)
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [isActionsModalOpen, setIsActionsModalOpen] = useState(false)
   const [candidaturaForAction, setCandidaturaForAction] = useState<Candidatura | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  const [candidatosAvaliados, setCandidatosAvaliados] = useState<CandidatoAvaliado[]>([])
+  const [selectedCandidatoAvaliado, setSelectedCandidatoAvaliado] = useState<CandidatoAvaliado | null>(null)
+  const [isCandidatoOpen, setIsCandidatoOpen] = useState(false)
+  const [gestorDepartamentos, setGestorDepartamentos] = useState<string[]>([])
+  const [candidatoAvaliadoForAction, setCandidatoAvaliadoForAction] = useState<CandidatoAvaliado | null>(null)
+  const [isAvaliadoActionsOpen, setIsAvaliadoActionsOpen] = useState(false)
+
   const verId = searchParams.get('ver')
 
   useEffect(() => {
+    if (!user?.empresa_id) return
+
+    const gestorSetoresPromise = user.role === 'gestor_rh'
+      ? supabase.from('gestor_rh_setores').select('cargos_departamento_id').eq('user_id', user.id!)
+      : Promise.resolve({ data: null as null })
+
     Promise.all([
       fetch('/api/candidaturas/empresa').then(r => r.json()),
       fetch('/api/empresa/templates').then(r => r.json()),
-    ]).then(([candidaturas, templates]) => {
+      supabase
+        .from('candidatos')
+        .select('*, vaga:vagas(titulo, departamento)')
+        .eq('empresa_id', user.empresa_id)
+        .order('match_score', { ascending: false, nullsFirst: false }),
+      gestorSetoresPromise,
+    ]).then(async ([candidaturas, templates, candRes, setoresRes]) => {
       const loaded: Candidatura[] = Array.isArray(candidaturas) ? candidaturas : []
       setCandidaturas(loaded)
       setTemplates(Array.isArray(templates) ? templates : [])
+      setCandidatosAvaliados(candRes.data || [])
       setLoading(false)
 
-      // Auto-abrir candidatura via ?ver=CANDIDATO_ID
+      if (setoresRes.data && setoresRes.data.length > 0) {
+        const ids = setoresRes.data.map((s: any) => s.cargos_departamento_id)
+        const deptRes = await supabase.from('cargos_departamentos').select('nome').in('id', ids)
+        if (deptRes.data) setGestorDepartamentos(deptRes.data.map((d: any) => d.nome))
+      }
+
       if (verId) {
         const candidatura = loaded.find(c => c.candidato_id === verId)
-        if (candidatura) {
-          setSelectedCandidatura(candidatura)
-          setIsOpen(true)
+        if (candidatura) { setSelectedCandidatura(candidatura); setIsOpen(true) }
+        else {
+          const cand = (candRes.data || []).find((c: CandidatoAvaliado) => c.id === verId)
+          if (cand) { setSelectedCandidatoAvaliado(cand); setIsCandidatoOpen(true) }
         }
       }
     }).catch(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [user])
 
   const vagas = [...new Set(candidaturas.map(c => c.vaga_titulo))].filter(Boolean)
+  const isGestorRH = user?.role === 'gestor_rh'
 
   const filtered = candidaturas.filter(c => {
     const matchSearch = c.nome.toLowerCase().includes(search.toLowerCase())
     const matchVaga = !filterVaga || c.vaga_titulo === filterVaga
     const matchStatus = c.status === activeTab
-    return matchSearch && matchVaga && matchStatus
+    const matchDept = !isGestorRH || gestorDepartamentos.length === 0 || gestorDepartamentos.includes(c.vaga_departamento || '')
+    return matchSearch && matchVaga && matchStatus && matchDept
+  })
+
+  // Mapear status de candidatos para abas
+  const filteredAvaliados = candidatosAvaliados.filter(c => {
+    const matchSearch = c.nome_completo.toLowerCase().includes(search.toLowerCase())
+    const matchVaga = !filterVaga || (c.vaga as Vaga)?.titulo === filterVaga
+    let matchTab = false
+    if (activeTab === 'pendente') matchTab = c.status_candidatura === 'inscrito' || c.status_candidatura === 'em_avaliacao'
+    if (activeTab === 'contratado') matchTab = c.status_candidatura === 'aprovado' || c.status_candidatura === 'contratado'
+    if (activeTab === 'rejeito') matchTab = c.status_candidatura === 'reprovado'
+    if (activeTab === 'banco_talentos') matchTab = c.disponivel_banco_talentos
+    const matchDept = !isGestorRH || gestorDepartamentos.length === 0 || gestorDepartamentos.includes((c.vaga as any)?.departamento || '')
+    return matchSearch && matchVaga && matchTab && matchDept
   })
 
   useEffect(() => setPage(1), [search, filterVaga, activeTab])
+
+  useEffect(() => {
+    if (isTestModalOpen && candidaturaForTest?.id) {
+      fetch(`/api/testes/links?candidatura_id=${candidaturaForTest.id}`)
+        .then(r => r.json()).then(setTesteLinksExistentes).catch(() => {})
+    }
+  }, [isTestModalOpen, candidaturaForTest?.id])
 
   const handleReject = async () => {
     if (!candidaturaForAction) return
@@ -217,6 +276,16 @@ export default function CandidatosPage() {
     }
   }
 
+  const handleAvaliadoStatusChange = async (newStatus: string) => {
+    if (!candidatoAvaliadoForAction) return
+    await supabase.from('candidatos').update({ status_candidatura: newStatus }).eq('id', candidatoAvaliadoForAction.id)
+    setCandidatosAvaliados(prev =>
+      prev.map(c => c.id === candidatoAvaliadoForAction.id ? { ...c, status_candidatura: newStatus as any } : c)
+    )
+    setIsAvaliadoActionsOpen(false)
+    toast.success('Status atualizado')
+  }
+
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
 
@@ -241,6 +310,9 @@ export default function CandidatosPage() {
       modelo_trabalho: 'presencial',
       regime_contrato: 'CLT',
       salario: c.vaga_salario ? String(c.vaga_salario) : '',
+      criar_conta: true,
+      email_conta: c.email || '',
+      senha_conta: '',
     })
     setIsApprovalModalOpen(true)
   }
@@ -332,7 +404,7 @@ export default function CandidatosPage() {
 
           <div className="w-64">
             <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Filtrar por Vaga</Label>
-            <Select value={filterVaga} onValueChange={setFilterVaga}>
+            <Select value={filterVaga} onValueChange={(val) => setFilterVaga(val || "")}>
               <SelectTrigger className="bg-card border-border h-10 w-full">
                 <SelectValue placeholder="Todas as Vagas" />
               </SelectTrigger>
@@ -365,79 +437,87 @@ export default function CandidatosPage() {
         ))}
       </div>
 
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border">
-                <TableHead className="w-2/5">Nome</TableHead>
-                <TableHead className="w-2/5">Vaga</TableHead>
-                <TableHead className="w-1/5">Data</TableHead>
-                <TableHead className="text-right w-20">Ação</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+        <div className="p-5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1e2a5e]">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-[35%]">Nome</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 w-[30%]">Vaga</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Match</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Classificação</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 w-20">Ação</th>
+              </tr>
+            </thead>
+            <tbody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">Carregando...</TableCell>
-                </TableRow>
-              ) : paginated.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    Nenhuma candidatura encontrada
-                  </TableCell>
-                </TableRow>
-              ) : paginated.map(c => (
-                <TableRow key={c.id} className="border-border">
-                  <TableCell
-                    className="font-medium text-foreground cursor-pointer hover:text-[#00D4FF] transition-colors"
-                    onClick={() => {
-                      setSelectedCandidatura(c)
-                      setIsOpen(true)
-                    }}
-                  >
-                    {c.nome}
-                  </TableCell>
-                  <TableCell
-                    className="text-muted-foreground cursor-pointer hover:text-[#00D4FF] transition-colors"
-                    onClick={() => {
-                      setSelectedCandidatura(c)
-                      setIsOpen(true)
-                    }}
-                  >
-                    {c.vaga_titulo}
-                  </TableCell>
-                  <TableCell
-                    className="text-muted-foreground text-sm cursor-pointer hover:text-[#00D4FF] transition-colors"
-                    onClick={() => {
-                      setSelectedCandidatura(c)
-                      setIsOpen(true)
-                    }}
-                  >
-                    {new Date(c.created_at).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {(c.status === 'pendente' || c.status === 'rejeito' || c.status === 'banco_talentos') && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setCandidaturaForAction(c)
-                          setIsActionsModalOpen(true)
-                        }}
-                        title="Ações"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
+                <tr className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 py-3.5 text-gray-300">Carregando...</td>
+                </tr>
+              ) : (
+                <>
+                  {/* Candidatos Avaliados (tabela candidatos com DISC/match) */}
+                  {filteredAvaliados.map(c => (
+                    <tr key={`avaliado-${c.id}`}
+                      className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                      onClick={() => { setSelectedCandidatoAvaliado(c); setIsCandidatoOpen(true) }}
+                    >
+                      <td className="px-4 py-3.5 text-gray-300">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-medium text-white text-sm">{c.nome_completo}</p>
+                            <p className="text-xs text-gray-500">{c.email}</p>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20">DISC</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-400">{(c.vaga as Vaga)?.titulo || c.cargo_pretendido || '-'}</td>
+                      <td className="px-4 py-3.5"><MatchScoreBadge score={c.match_score} /></td>
+                      <td className="px-4 py-3.5"><ClassificacaoBadge classificacao={c.classificacao} /></td>
+                      <td className="px-4 py-3.5 text-right">
+                        <button className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors"
+                          onClick={e => { e.stopPropagation(); setCandidatoAvaliadoForAction(c); setIsAvaliadoActionsOpen(true) }}>
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Candidaturas brutas (formulário público) */}
+                  {paginated.map(c => (
+                    <tr key={c.id} className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                      onClick={() => { setSelectedCandidatura(c); setIsOpen(true) }}
+                    >
+                      <td className="px-4 py-3.5">
+                        <p className="font-medium text-white text-sm">{c.nome}</p>
+                        <p className="text-xs text-gray-500">{c.email}</p>
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-400">{c.vaga_titulo}</td>
+                      <td className="px-4 py-3.5"><span className="text-xs text-gray-600">—</span></td>
+                      <td className="px-4 py-3.5"><span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleDateString('pt-BR')}</span></td>
+                      <td className="px-4 py-3.5 text-right">
+                        {(c.status === 'pendente' || c.status === 'rejeito' || c.status === 'banco_talentos') && (
+                          <button className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors"
+                            onClick={e => { e.stopPropagation(); setCandidaturaForAction(c); setIsActionsModalOpen(true) }}>
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {filteredAvaliados.length === 0 && paginated.length === 0 && (
+                    <tr className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors">
+                      <td className="px-4 py-3.5 text-gray-300">
+                        Nenhum candidato encontrado
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
         <Pagination
           currentPage={page}
           totalPages={totalPages}
@@ -445,7 +525,7 @@ export default function CandidatosPage() {
           itemsPerPage={ITEMS_PER_PAGE}
           onPageChange={setPage}
         />
-      </Card>
+      </div>
 
       {/* Modal de Detalhes */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -463,9 +543,9 @@ export default function CandidatosPage() {
                     <p className="text-xs text-muted-foreground font-semibold mb-1">Vaga</p>
                     <p className="text-foreground font-medium">{selectedCandidatura.vaga_titulo}</p>
                   </div>
-                  <Badge className={statusColors[selectedCandidatura.status]}>
+                  <span className="px-2 py-0.5 rounded-full text-xs font-semibold border border-[#1e2a5e] text-gray-300">
                     {statusLabels[selectedCandidatura.status]}
-                  </Badge>
+                  </span>
                 </div>
 
                 {/* Informações de Contato */}
@@ -523,7 +603,7 @@ export default function CandidatosPage() {
                     <Button
                       variant="outline"
                       className="w-full gap-2"
-                      onClick={() => handleDownload(selectedCandidatura.id, selectedCandidatura.curriculo_nome)}
+                      onClick={() => handleDownload(selectedCandidatura.id, selectedCandidatura.curriculo_nome || '')}
                     >
                       <Download className="w-4 h-4" />
                       Baixar {selectedCandidatura.curriculo_nome}
@@ -543,142 +623,210 @@ export default function CandidatosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Seleção de Teste */}
-      <Dialog open={isTestModalOpen} onOpenChange={setIsTestModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Enviar Teste</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-5 py-6">
-            {/* Candidato */}
-            <div className="bg-secondary/40 rounded-lg p-4 border border-border">
-              <p className="text-xs text-muted-foreground font-semibold mb-1.5">Candidato</p>
-              <p className="text-sm font-semibold text-foreground">{candidaturaForTest?.nome}</p>
-              <p className="text-xs text-muted-foreground mt-1">{candidaturaForTest?.email}</p>
-            </div>
-
-            {/* Seleção de Teste */}
-            <div>
-              <Label className="text-xs font-semibold text-muted-foreground mb-2.5 block">Selecione o Teste</Label>
-              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                <SelectTrigger className="bg-card border-border h-10">
-                  <SelectValue placeholder="Escolha um template..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.length === 0 ? (
-                    <div className="p-2 text-xs text-muted-foreground">Nenhum template disponível</div>
-                  ) : (
-                    templates.map(t => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.nome}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {selectedTemplate && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Template selecionado: <span className="text-[#00D4FF]">{templates.find(t => t.id === selectedTemplate)?.nome}</span>
-                </p>
-              )}
-            </div>
-
-            {/* Botões */}
-            <div className="flex gap-2 justify-end pt-2 border-t border-border">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setIsTestModalOpen(false)
-                  setSelectedTemplate('')
-                  setCandidaturaForTest(null)
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF] hover:opacity-90"
-                disabled={!selectedTemplate || templates.length === 0}
-                onClick={async () => {
-                  if (!candidaturaForTest || !selectedTemplate) return
-
-                  const res = await fetch('/api/testes/gerar-link', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      candidatura_id: candidaturaForTest.id,
-                      template_id: selectedTemplate,
-                    }),
-                  })
-
-                  if (res.ok) {
-                    const data = await res.json()
-                    setTestLink(data.link)
-                    setShowTestLink(true)
-                  }
-                }}
-              >
-                Gerar Link
-              </Button>
-            </div>
-          </div>
+      {/* Modal Candidato Avaliado (perfil DISC) */}
+      <Dialog open={isCandidatoOpen} onOpenChange={setIsCandidatoOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedCandidatoAvaliado && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-2xl">{selectedCandidatoAvaliado.nome_completo}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 py-4">
+                <div className="flex items-center gap-3">
+                  <MatchScoreBadge score={selectedCandidatoAvaliado.match_score} />
+                  <ClassificacaoBadge classificacao={selectedCandidatoAvaliado.classificacao} />
+                </div>
+                <div className="bg-secondary/30 rounded-lg p-4 border border-border space-y-3">
+                  <h3 className="font-semibold text-sm">Informações de Contato</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium mb-1">Email</p>
+                      <a href={`mailto:${selectedCandidatoAvaliado.email}`} className="text-[#00D4FF] hover:underline break-all">
+                        {selectedCandidatoAvaliado.email}
+                      </a>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium mb-1">WhatsApp</p>
+                      <p className="text-foreground">{selectedCandidatoAvaliado.whatsapp || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium mb-1">Cargo Pretendido</p>
+                      <p className="text-foreground">{selectedCandidatoAvaliado.cargo_pretendido || '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-medium mb-1">Vaga</p>
+                      <p className="text-foreground">{(selectedCandidatoAvaliado.vaga as Vaga)?.titulo || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+                {selectedCandidatoAvaliado.perfil_disc && (
+                  <div className="bg-secondary/30 rounded-lg p-4 border border-border">
+                    <h3 className="font-semibold text-sm mb-3">Perfil DISC</h3>
+                    <DISCBars perfil={selectedCandidatoAvaliado.perfil_disc} />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Modal com Link Gerado */}
-      <Dialog open={showTestLink} onOpenChange={setShowTestLink}>
-        <DialogContent className="sm:max-w-md">
+      {/* Modal de Teste DISC */}
+      <Dialog
+        open={isTestModalOpen}
+        onOpenChange={open => {
+          if (!open) {
+            setIsTestModalOpen(false)
+            setSelectedTemplate('')
+            setCandidaturaForTest(null)
+            setTestLink('')
+            setShowTestLink(false)
+            setTesteLinksExistentes([])
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl flex items-center gap-2">
-              ✅ Link Gerado com Sucesso
+            <DialogTitle className="text-xl">
+              {showTestLink ? '✅ Link Gerado' : 'Enviar Teste DISC'}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 py-6">
-            {/* Informação */}
-            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-              <p className="text-xs text-green-400 font-semibold mb-1">Candidato</p>
-              <p className="text-sm text-foreground font-medium">{candidaturaForTest?.nome}</p>
+          <div className="space-y-5 py-4">
+            {/* Candidato */}
+            <div className="bg-secondary/40 rounded-lg p-4 border border-border">
+              <p className="text-xs text-muted-foreground font-semibold mb-1">Candidato</p>
+              <p className="text-sm font-semibold text-foreground">{candidaturaForTest?.nome}</p>
+              <p className="text-xs text-muted-foreground">{candidaturaForTest?.email}</p>
             </div>
 
-            {/* Link */}
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground mb-2.5">Compartilhe este link:</p>
-              <div className="bg-secondary/50 border border-border rounded-lg p-3.5 flex items-center gap-2">
-                <code className="text-xs break-all text-foreground flex-1 font-mono">{testLink}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 shrink-0 text-[#00D4FF] hover:text-[#00D4FF] hover:bg-[#00D4FF]/10"
-                  onClick={() => {
-                    navigator.clipboard.writeText(testLink)
-                    toast.success('Link copiado!')
-                  }}
-                  title="Copiar link"
-                >
-                  <Download className="w-4 h-4" />
-                </Button>
+            {showTestLink ? (
+              /* Exibe link recém-gerado */
+              <>
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Link para compartilhar:</p>
+                  <div className="bg-secondary/50 border border-border rounded-lg p-3.5 flex items-center gap-2">
+                    <code className="text-xs break-all text-foreground flex-1 font-mono">{testLink}</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 shrink-0 text-[#00D4FF] hover:bg-[#00D4FF]/10"
+                      onClick={() => { navigator.clipboard.writeText(testLink); toast.success('Link copiado!') }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">Válido por 30 dias</p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setShowTestLink(false); setTestLink(''); setSelectedTemplate('') }}
+                  >
+                    Gerar Outro
+                  </Button>
+                  <Button
+                    className="flex-1 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] hover:opacity-90"
+                    onClick={() => {
+                      setIsTestModalOpen(false)
+                      setSelectedTemplate('')
+                      setCandidaturaForTest(null)
+                      setTestLink('')
+                      setShowTestLink(false)
+                      setTesteLinksExistentes([])
+                    }}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              /* Seleção de template */
+              <>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Selecione o Teste</Label>
+                  <Select value={selectedTemplate} onValueChange={(val) => setSelectedTemplate(val || "")}>
+                    <SelectTrigger className="bg-card border-border h-10">
+                      <span className={selectedTemplate ? 'text-foreground' : 'text-muted-foreground'}>
+                        {selectedTemplate
+                          ? templates.find(t => t.id === selectedTemplate)?.nome
+                          : 'Escolha um template...'}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.length === 0
+                        ? <div className="p-2 text-xs text-muted-foreground">Nenhum template disponível</div>
+                        : templates.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
+                          ))
+                      }
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2 justify-end border-t border-border pt-4">
+                  <Button variant="outline" size="sm" onClick={() => setIsTestModalOpen(false)}>Cancelar</Button>
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF] hover:opacity-90"
+                    disabled={!selectedTemplate}
+                    onClick={async () => {
+                      if (!candidaturaForTest || !selectedTemplate) return
+                      const res = await fetch('/api/testes/gerar-link', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ candidatura_id: candidaturaForTest.id, template_id: selectedTemplate }),
+                      })
+                      if (res.ok) {
+                        const data = await res.json()
+                        setTestLink(data.link)
+                        setShowTestLink(true)
+                        // Refresh list
+                        fetch(`/api/testes/links?candidatura_id=${candidaturaForTest.id}`)
+                          .then(r => r.json()).then(setTesteLinksExistentes).catch(() => {})
+                      }
+                    }}
+                  >
+                    Gerar Link
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Links já gerados */}
+            {testeLinksExistentes.length > 0 && (
+              <div className="border-t border-border pt-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-3">Links gerados anteriormente</p>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {testeLinksExistentes.map(link => {
+                    const url = `${window.location.origin}/testes/responder/${link.token}`
+                    return (
+                      <div key={link.id} className="bg-secondary/30 rounded-lg p-3 border border-border flex items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <p className="text-xs font-medium text-foreground truncate">{link.template_nome}</p>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${link.respondido ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                              {link.respondido ? 'Respondido' : 'Pendente'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{new Date(link.created_at).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-[#00D4FF] hover:bg-[#00D4FF]/10 shrink-0"
+                          onClick={() => { navigator.clipboard.writeText(url); toast.success('Link copiado!') }}
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                O candidato pode responder o teste por 30 dias
-              </p>
-            </div>
-
-            {/* Botão */}
-            <Button
-              className="w-full bg-gradient-to-r from-[#00D4FF] to-[#0066FF] hover:opacity-90"
-              onClick={() => {
-                setShowTestLink(false)
-                setIsTestModalOpen(false)
-                setSelectedTemplate('')
-                setCandidaturaForTest(null)
-                setTestLink('')
-              }}
-            >
-              Fechar
-            </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -717,7 +865,7 @@ export default function CandidatosPage() {
                 <div>
                   <p className="text-xs text-muted-foreground font-semibold mb-1">Data da Candidatura</p>
                   <p className="text-sm font-semibold text-foreground">
-                    {new Date(candidaturaForApproval?.created_at).toLocaleDateString('pt-BR')}
+                    {new Date(candidaturaForApproval?.created_at || '').toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               </div>
@@ -886,7 +1034,88 @@ export default function CandidatosPage() {
               </div>
             </div>
 
-            {/* SEÇÃO 4: Botões de Ação */}
+            {/* SEÇÃO 4: Conta de Colaborador */}
+            <div>
+              <h3 className="text-sm font-bold text-[#00D4FF] mb-4 uppercase tracking-wide flex items-center gap-2">
+                <UserCheck className="w-4 h-4" />
+                Conta de Colaborador
+              </h3>
+              <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Criar conta de acesso</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Separada da conta de candidato — o colaborador poderá acessar o painel como funcionário
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.criar_conta}
+                    onCheckedChange={(v) => setFormData({ ...formData, criar_conta: v })}
+                  />
+                </div>
+
+                {formData.criar_conta && (
+                  <div className="space-y-3 pt-2 border-t border-border">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Email da conta</Label>
+                      <Input
+                        type="email"
+                        value={formData.email_conta}
+                        onChange={(e) => setFormData({ ...formData, email_conta: e.target.value })}
+                        className="bg-background border-border"
+                        placeholder="email@empresa.com"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Pode ser diferente do email da candidatura (ex: email corporativo)
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">Senha temporária</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            type={showSenhaConta ? 'text' : 'password'}
+                            value={formData.senha_conta}
+                            onChange={(e) => setFormData({ ...formData, senha_conta: e.target.value })}
+                            className="bg-background border-border pr-10"
+                            placeholder="Mín. 8 chars, maiúscula, número"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSenhaConta(v => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showSenhaConta ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          title="Gerar senha"
+                          onClick={() => {
+                            const nome = candidaturaForApproval?.nome || 'Colaborador'
+                            const prefixo = nome.trim().split(' ')[0]
+                            const cap = prefixo.charAt(0).toUpperCase() + prefixo.slice(1, 4).toLowerCase()
+                            const num = Math.floor(1000 + Math.random() * 9000)
+                            setFormData({ ...formData, senha_conta: `${cap}@${num}` })
+                            setShowSenhaConta(true)
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Compartilhe esta senha com o colaborador após a aprovação
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* SEÇÃO 5: Botões de Ação */}
             <div className="flex gap-3 justify-end pt-6 border-t border-border">
               <Button
                 variant="outline"
@@ -947,6 +1176,22 @@ export default function CandidatosPage() {
                   <div className="flex-1">
                     <p className="font-medium text-foreground">Aprovar</p>
                     <p className="text-xs text-muted-foreground">Cadastrar como colaborador</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                  onClick={() => {
+                    setCandidaturaForTest(candidaturaForAction)
+                    setIsActionsModalOpen(false)
+                    setIsTestModalOpen(true)
+                  }}
+                >
+                  <Link2 className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Enviar Teste DISC</p>
+                    <p className="text-xs text-muted-foreground">Gerar link para o candidato responder</p>
                   </div>
                 </Button>
 
@@ -1075,6 +1320,116 @@ export default function CandidatosPage() {
             >
               Cancelar
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Ações — Candidato Avaliado (DISC) */}
+      <Dialog open={isAvaliadoActionsOpen} onOpenChange={setIsAvaliadoActionsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ações para {candidatoAvaliadoForAction?.nome_completo}</DialogTitle>
+            <DialogDescription>
+              {candidatoAvaliadoForAction?.classificacao
+                ? `Classificação: ${candidatoAvaliadoForAction.classificacao} · Match: ${candidatoAvaliadoForAction.match_score ?? '—'}%`
+                : 'Escolha uma ação'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            {!candidatoAvaliadoForAction?.perfil_disc && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                onClick={() => {
+                  if (!candidatoAvaliadoForAction) return
+                  setCandidaturaForTest({
+                    id: candidatoAvaliadoForAction.id,
+                    nome: candidatoAvaliadoForAction.nome_completo,
+                    email: candidatoAvaliadoForAction.email,
+                  } as any)
+                  setIsAvaliadoActionsOpen(false)
+                  setIsTestModalOpen(true)
+                }}
+              >
+                <Link2 className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">Enviar Teste DISC</p>
+                  <p className="text-xs text-muted-foreground">Candidato ainda não respondeu o teste</p>
+                </div>
+              </Button>
+            )}
+
+            {(candidatoAvaliadoForAction?.status_candidatura === 'inscrito' || candidatoAvaliadoForAction?.status_candidatura === 'em_avaliacao') && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-green-500/10"
+                  onClick={() => handleAvaliadoStatusChange('aprovado')}
+                >
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Aprovar</p>
+                    <p className="text-xs text-muted-foreground">Avançar para etapa de contratação</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={() => handleAvaliadoStatusChange('em_avaliacao')}
+                >
+                  <Star className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Em Avaliação</p>
+                    <p className="text-xs text-muted-foreground">Marcar para avaliação aprofundada</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-red-500/10"
+                  onClick={() => handleAvaliadoStatusChange('reprovado')}
+                >
+                  <ThumbsDown className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Reprovar</p>
+                    <p className="text-xs text-muted-foreground">Não prosseguir com este candidato</p>
+                  </div>
+                </Button>
+              </>
+            )}
+
+            {candidatoAvaliadoForAction?.status_candidatura === 'aprovado' && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-green-500/10"
+                  onClick={() => handleAvaliadoStatusChange('contratado')}
+                >
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Confirmar Contratação</p>
+                    <p className="text-xs text-muted-foreground">Marcar como contratado</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-red-500/10"
+                  onClick={() => handleAvaliadoStatusChange('reprovado')}
+                >
+                  <ThumbsDown className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Reprovar</p>
+                    <p className="text-xs text-muted-foreground">Reverter aprovação</p>
+                  </div>
+                </Button>
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-border">
+            <Button variant="outline" onClick={() => setIsAvaliadoActionsOpen(false)}>Cancelar</Button>
           </div>
         </DialogContent>
       </Dialog>

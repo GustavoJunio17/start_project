@@ -249,6 +249,8 @@ export default function ColaboradoresPage() {
           empresas={empresaAtual}
           onClose={() => setIsFormOpen(false)}
           onSaved={() => { setIsFormOpen(false); fetchData() }}
+          userRole={user?.role}
+          userId={user?.id}
         />
       )}
     </div>

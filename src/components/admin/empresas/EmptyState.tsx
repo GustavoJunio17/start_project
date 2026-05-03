@@ -15,12 +15,12 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, cta }: EmptyStateProps) {
   return (
-    <div className="flex items-center justify-center rounded-xl border border-border bg-card/50 px-6 py-16 text-center md:py-24">
+    <div className="flex items-center justify-center rounded-xl border border-[#1e2a5e] bg-[#0A0E27]/50 px-6 py-16 text-center md:py-24">
       <div className="space-y-4">
-        {icon && <div className="flex justify-center text-4xl text-primary/40">{icon}</div>}
+        {icon && <div className="flex justify-center text-4xl text-[#00D4FF]/40">{icon}</div>}
         <div>
-          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
-          <p className="mt-2 text-sm text-muted-foreground max-w-sm">{description}</p>
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <p className="mt-2 text-sm text-gray-400 max-w-sm">{description}</p>
         </div>
         {cta && (
           <Link

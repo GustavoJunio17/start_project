@@ -4,27 +4,19 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
 import { DISCChart, DISCBars } from '@/components/disc/DISCChart'
 import { Pagination } from '@/components/ui/pagination'
-import type { Candidato, StatusCandidatura, Agendamento, TipoAgendamento, Vaga } from '@/types/database'
+import type { Candidato, StatusCandidatura, TipoAgendamento, Vaga } from '@/types/database'
 import { Search, Calendar, Eye } from 'lucide-react'
 
 const supabase = createClient()
-
 const ITEMS_PER_PAGE = 20
 
 const STATUS_LABELS: Record<StatusCandidatura, string> = {
-  inscrito: 'Inscrito', em_avaliacao: 'Em Avaliacao', entrevista_agendada: 'Entrevista',
+  inscrito: 'Inscrito', em_avaliacao: 'Em Avaliação', entrevista_agendada: 'Entrevista',
   aprovado: 'Aprovado', reprovado: 'Reprovado', contratado: 'Contratado',
 }
 
@@ -52,8 +44,6 @@ export default function GestorCandidatosPage() {
     setCandidatos(loaded)
     setVagas(vagasRes.data || [])
     setLoading(false)
-
-    // Auto-abrir candidato via query param ?ver=ID
     const verId = searchParams.get('ver')
     if (verId) {
       const candidatoParaAbrir = loaded.find(c => c.id === verId)
@@ -83,10 +73,8 @@ export default function GestorCandidatosPage() {
     e.preventDefault()
     if (!user?.empresa_id) return
     await supabase.from('agendamentos').insert({
-      candidato_id: agendCandId,
-      empresa_id: user.empresa_id,
-      gestor_responsavel_id: user.id,
-      ...agendForm,
+      candidato_id: agendCandId, empresa_id: user.empresa_id,
+      gestor_responsavel_id: user.id, ...agendForm,
     })
     await supabase.from('candidatos').update({ status_candidatura: 'entrevista_agendada' }).eq('id', agendCandId)
     setAgendDialogOpen(false)
@@ -99,7 +87,6 @@ export default function GestorCandidatosPage() {
     return matchSearch && matchStatus
   })
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [search, filterStatus])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -107,15 +94,16 @@ export default function GestorCandidatosPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Candidatos</h1>
+      <h1 className="text-2xl font-bold text-white tracking-tight">Candidatos</h1>
 
       <div className="flex gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#00D4FF]/50 transition-colors" />
         </div>
         <Select value={filterStatus} onValueChange={v => v && setFilterStatus(v)}>
-          <SelectTrigger className="w-40 bg-card border-border"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40 bg-[#111633] border-[#1e2a5e]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
@@ -125,34 +113,28 @@ export default function GestorCandidatosPage() {
 
       {/* Detail modal */}
       <Dialog open={!!selectedCandidato} onOpenChange={open => !open && setSelectedCandidato(null)}>
-        <DialogContent className="bg-card border-border max-w-2xl">
+        <DialogContent className="bg-[#0A0E27] border-[#1e2a5e] max-w-2xl">
           {selectedCandidato && (
             <>
               <DialogHeader>
-                <DialogTitle>{selectedCandidato.nome_completo}</DialogTitle>
+                <DialogTitle className="text-white">{selectedCandidato.nome_completo}</DialogTitle>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">E-mail: {selectedCandidato.email}</p>
-                  <p className="text-sm text-muted-foreground">WhatsApp: {selectedCandidato.whatsapp || '-'}</p>
-                  <p className="text-sm text-muted-foreground">Cargo: {selectedCandidato.cargo_pretendido || '-'}</p>
+                  <p className="text-sm text-gray-400">E-mail: {selectedCandidato.email}</p>
+                  <p className="text-sm text-gray-400">WhatsApp: {selectedCandidato.whatsapp || '-'}</p>
+                  <p className="text-sm text-gray-400">Cargo: {selectedCandidato.cargo_pretendido || '-'}</p>
                   <div className="mt-3 flex items-center gap-2">
                     <MatchScoreBadge score={selectedCandidato.match_score} />
                     <ClassificacaoBadge classificacao={selectedCandidato.classificacao} />
                   </div>
                   {selectedCandidato.perfil_disc && (
-                    <div className="mt-4">
-                      <DISCBars perfil={selectedCandidato.perfil_disc} />
-                    </div>
+                    <div className="mt-4"><DISCBars perfil={selectedCandidato.perfil_disc} /></div>
                   )}
                 </div>
                 <div>
                   {selectedCandidato.perfil_disc && (
-                    <DISCChart
-                      perfil={selectedCandidato.perfil_disc}
-                      perfilIdeal={(selectedCandidato.vaga as any)?.perfil_disc_ideal}
-                      size={200}
-                    />
+                    <DISCChart perfil={selectedCandidato.perfil_disc} perfilIdeal={(selectedCandidato.vaga as any)?.perfil_disc_ideal} size={200} />
                   )}
                 </div>
               </div>
@@ -163,17 +145,18 @@ export default function GestorCandidatosPage() {
 
       {/* Agendar dialog */}
       <Dialog open={agendDialogOpen} onOpenChange={setAgendDialogOpen}>
-        <DialogContent className="bg-card border-border">
-          <DialogHeader><DialogTitle>Agendar Entrevista</DialogTitle></DialogHeader>
+        <DialogContent className="bg-[#0A0E27] border-[#1e2a5e]">
+          <DialogHeader><DialogTitle className="text-white">Agendar Entrevista</DialogTitle></DialogHeader>
           <form onSubmit={handleAgendar} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Data e Hora</Label>
-              <Input type="datetime-local" value={agendForm.data_hora} onChange={e => setAgendForm({ ...agendForm, data_hora: e.target.value })} required className="bg-background" />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-300">Data e Hora</label>
+              <input type="datetime-local" value={agendForm.data_hora} onChange={e => setAgendForm({ ...agendForm, data_hora: e.target.value })} required
+                className="w-full px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50" />
             </div>
-            <div className="space-y-2">
-              <Label>Tipo</Label>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-300">Tipo</label>
               <Select value={agendForm.tipo} onValueChange={v => setAgendForm({ ...agendForm, tipo: v as TipoAgendamento })}>
-                <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="bg-[#111633] border-[#1e2a5e]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="online">Online</SelectItem>
                   <SelectItem value="presencial">Presencial</SelectItem>
@@ -181,79 +164,80 @@ export default function GestorCandidatosPage() {
               </Select>
             </div>
             {agendForm.tipo === 'online' ? (
-              <div className="space-y-2">
-                <Label>Link da Reuniao</Label>
-                <Input value={agendForm.link_reuniao} onChange={e => setAgendForm({ ...agendForm, link_reuniao: e.target.value })} className="bg-background" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">Link da Reunião</label>
+                <input value={agendForm.link_reuniao} onChange={e => setAgendForm({ ...agendForm, link_reuniao: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50" />
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label>Endereco</Label>
-                <Input value={agendForm.endereco} onChange={e => setAgendForm({ ...agendForm, endereco: e.target.value })} className="bg-background" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-300">Endereço</label>
+                <input value={agendForm.endereco} onChange={e => setAgendForm({ ...agendForm, endereco: e.target.value })}
+                  className="w-full px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50" />
               </div>
             )}
-            <div className="space-y-2">
-              <Label>Observacoes</Label>
-              <Textarea value={agendForm.observacoes} onChange={e => setAgendForm({ ...agendForm, observacoes: e.target.value })} className="bg-background" />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-300">Observações</label>
+              <textarea value={agendForm.observacoes} onChange={e => setAgendForm({ ...agendForm, observacoes: e.target.value })}
+                className="w-full px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 resize-none" rows={3} />
             </div>
-            <Button type="submit" className="w-full bg-gradient-to-r from-[#00D4FF] to-[#0066FF]">Agendar</Button>
+            <button type="submit" className="w-full py-2.5 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all">Agendar</button>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Card className="bg-card border-border" id="candidatos-table">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border">
-                <TableHead>Candidato</TableHead>
-                <TableHead>Vaga</TableHead>
-                <TableHead>Match</TableHead>
-                <TableHead>Class.</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : paginated.map(c => (
-                <TableRow key={c.id} className="border-border">
-                  <TableCell>
-                    <button onClick={() => setSelectedCandidato(c)} className="text-left">
-                      <p className="font-medium text-foreground hover:text-[#00D4FF]">{c.nome_completo}</p>
-                      <p className="text-xs text-muted-foreground">{c.email}</p>
+      <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden" id="candidatos-table">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#1e2a5e]">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Candidato</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Vaga</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Match</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Class.</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="text-center py-8 text-gray-500">Carregando...</td></tr>
+            ) : paginated.map(c => (
+              <tr key={c.id} className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors last:border-0">
+                <td className="px-4 py-3.5">
+                  <button onClick={() => setSelectedCandidato(c)} className="text-left">
+                    <p className="font-medium text-white hover:text-[#00D4FF] transition-colors">{c.nome_completo}</p>
+                    <p className="text-xs text-gray-500">{c.email}</p>
+                  </button>
+                </td>
+                <td className="px-4 py-3.5 text-gray-400">{(c.vaga as any)?.titulo || '-'}</td>
+                <td className="px-4 py-3.5"><MatchScoreBadge score={c.match_score} /></td>
+                <td className="px-4 py-3.5"><ClassificacaoBadge classificacao={c.classificacao} /></td>
+                <td className="px-4 py-3.5">
+                  <Select value={c.status_candidatura} onValueChange={v => handleStatusChange(c.id, v as StatusCandidatura)}>
+                    <SelectTrigger className="w-32 h-8 text-xs bg-[#0A0E27] border-[#1e2a5e]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex gap-1">
+                    <button onClick={() => setSelectedCandidato(c)}
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors">
+                      <Eye className="w-4 h-4" />
                     </button>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{(c.vaga as any)?.titulo || '-'}</TableCell>
-                  <TableCell><MatchScoreBadge score={c.match_score} /></TableCell>
-                  <TableCell><ClassificacaoBadge classificacao={c.classificacao} /></TableCell>
-                  <TableCell>
-                    <Select value={c.status_candidatura} onValueChange={v => handleStatusChange(c.id, v as StatusCandidatura)}>
-                      <SelectTrigger className="w-32 h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedCandidato(c)}><Eye className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => { setAgendCandId(c.id); setAgendDialogOpen(true) }}><Calendar className="w-4 h-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setPage}
-        />
-      </Card>
+                    <button onClick={() => { setAgendCandId(c.id); setAgendDialogOpen(true) }}
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors">
+                      <Calendar className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setPage} />
+      </div>
     </div>
   )
 }

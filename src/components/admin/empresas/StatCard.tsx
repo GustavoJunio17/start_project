@@ -23,26 +23,26 @@ export function StatCard({
   className = '',
 }: StatCardProps) {
   return (
-    <div className={`bg-card border border-border rounded-xl p-6 transition hover:border-primary/50 ${className}`}>
+    <div className={`bg-[#0A0E27] border border-[#1e2a5e] rounded-xl p-6 transition-colors hover:border-[#00D4FF]/50 ${className}`}>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-semibold text-foreground mt-1">{value}</p>
+          <p className="text-sm font-medium text-gray-400">{title}</p>
+          <p className="text-3xl font-semibold text-white mt-1">{value}</p>
         </div>
-        {icon && <div className="text-primary/70">{icon}</div>}
+        {icon && <div className="text-[#00D4FF]">{icon}</div>}
       </div>
 
       {(description || trend) && (
-        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border/50">
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[#1e2a5e]">
+          {description && <p className="text-xs text-gray-400">{description}</p>}
           {trend && (
             <span
               className={`text-xs font-semibold ${
                 trend.direction === 'up'
-                  ? 'text-success'
+                  ? 'text-green-500'
                   : trend.direction === 'down'
-                    ? 'text-destructive'
-                    : 'text-muted-foreground'
+                    ? 'text-red-500'
+                    : 'text-gray-400'
               }`}
             >
               {trend.direction === 'up' ? '↑' : trend.direction === 'down' ? '↓' : '→'} {trend.value}%

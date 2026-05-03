@@ -32,7 +32,7 @@ async function handleGET(req: NextRequest, context?: { params?: { id: string } }
   const hasPermission = 
     user.role === 'super_admin' || 
     user.role === 'super_gestor' || 
-    ((user.role === 'user_empresa' || user.role === 'gestor_rh') && empresaId === user.empresa_id)
+    ((user.role === 'admin' || user.role === 'gestor_rh') && empresaId === user.empresa_id)
 
   if (!hasPermission) {
     return errorResponse('Voce nao tem permissao para listar vagas desta empresa', 403)

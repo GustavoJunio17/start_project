@@ -47,7 +47,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* START PRO custom colors */
+  /* START PRO brand colors */
   --color-neon: #00D4FF;
   --color-neon-dark: #0066FF;
   --color-gold: #F59E0B;
@@ -57,7 +57,7 @@
   --color-danger: #EF4444;
 }
 
-/* Theme: Dark (default) */
+/* ── Theme: Dark (default) ── */
 .theme-dark {
   --background: #0A0E27;
   --foreground: #F8FAFC;
@@ -93,7 +93,7 @@
   --sidebar-ring: #00D4FF;
 }
 
-/* Theme: Clean */
+/* ── Theme: Clean ── */
 .theme-clean {
   --background: #F8FAFC;
   --foreground: #0F172A;
@@ -129,14 +129,304 @@
   --sidebar-ring: #0EA5E9;
 }
 
+/* ─────────────────────────────────────────────
+   BASE LAYER — applies to every screen
+   ───────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
+    scroll-behavior: smooth;
     @apply font-sans;
   }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar — all screens */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: rgba(0,212,255,0.18); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.35); }
+
+  /* Text selection */
+  ::selection {
+    background: rgba(0,212,255,0.25);
+    color: #fff;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   GLOBAL UTILITIES — consistent across all screens
+   ───────────────────────────────────────────── */
+
+/* Glass card — use on any card across the app */
+.glass-card {
+  background: rgba(17, 22, 51, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(30, 42, 94, 0.8);
+  border-radius: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-card:hover {
+  border-color: rgba(0,212,255,0.18);
+  box-shadow: 0 8px 32px -8px rgba(0,212,255,0.08);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #00D4FF 0%, #0066FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section heading pattern */
+.section-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #00D4FF;
+}
+
+/* Status badges — consistent across tables */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.badge-success { background: rgba(16,185,129,0.12); color: #10B981; border: 1px solid rgba(16,185,129,0.25); }
+.badge-danger  { background: rgba(239,68,68,0.12);  color: #EF4444; border: 1px solid rgba(239,68,68,0.25); }
+.badge-info    { background: rgba(0,212,255,0.10);  color: #00D4FF; border: 1px solid rgba(0,212,255,0.2); }
+.badge-warn    { background: rgba(245,158,11,0.12); color: #F59E0B; border: 1px solid rgba(245,158,11,0.25); }
+.badge-neutral { background: rgba(148,163,184,0.1); color: #94A3B8; border: 1px solid rgba(148,163,184,0.2); }
+
+/* Data table — consistent row styling */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.data-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  border-bottom: 1px solid rgba(30,42,94,0.8);
+}
+.data-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(30,42,94,0.4);
+  color: #F8FAFC;
+  transition: background 0.15s ease;
+}
+.data-table tr:hover td { background: rgba(0,212,255,0.03); }
+.data-table tr:last-child td { border-bottom: none; }
+
+/* Page header — consistent across all inner screens */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(30,42,94,0.6);
+}
+.page-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #F8FAFC;
+  letter-spacing: -0.01em;
+}
+.page-subtitle {
+  font-size: 0.85rem;
+  color: #94A3B8;
+  margin-top: 0.2rem;
+}
+
+/* Stat card — used in dashboards */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem;
+  border-radius: 0.875rem;
+  background: rgba(17,22,51,0.7);
+  border: 1px solid rgba(30,42,94,0.7);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.stat-card:hover {
+  border-color: rgba(0,212,255,0.2);
+  transform: translateY(-2px);
+}
+.stat-card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00D4FF, #0066FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+.stat-card-label {
+  font-size: 0.78rem;
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* Primary button — consistent glow */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.65rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: linear-gradient(135deg, #00D4FF, #0066FF);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px -6px rgba(0,212,255,0.4);
+}
+.btn-primary:active { transform: translateY(0); opacity: 0.92; }
+.btn-primary:disabled { opacity: 0.45; pointer-events: none; }
+
+/* Ghost / secondary button */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.65rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: transparent;
+  color: #F8FAFC;
+  border: 1px solid rgba(30,42,94,0.8);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.btn-ghost:hover {
+  background: rgba(30,42,94,0.5);
+  border-color: rgba(0,212,255,0.25);
+  transform: translateY(-1px);
+}
+.btn-ghost:active { transform: translateY(0); }
+.btn-ghost:disabled { opacity: 0.45; pointer-events: none; }
+
+/* Form input — uniform focus ring */
+.input-field {
+  width: 100%;
+  padding: 0.6rem 0.875rem;
+  border-radius: 0.65rem;
+  background: rgba(17,22,51,0.8);
+  border: 1px solid rgba(30,42,94,0.9);
+  color: #F8FAFC;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.input-field::placeholder { color: #4b5563; }
+.input-field:focus {
+  border-color: rgba(0,212,255,0.5);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.08);
+}
+
+/* ─────────────────────────────────────────────
+   LANDING PAGE SPECIFICS (GSAP-driven)
+   ───────────────────────────────────────────── */
+
+/* Orbs — GSAP adds x/y/scale transforms on top */
+.lp-orb-1 {
+  position: absolute;
+  width: 700px; height: 700px;
+  top: -20%; left: -15%;
+  background: radial-gradient(circle, rgba(0,212,255,0.13) 0%, transparent 65%);
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+.lp-orb-2 {
+  position: absolute;
+  width: 620px; height: 620px;
+  bottom: -18%; right: -10%;
+  background: radial-gradient(circle, rgba(0,102,255,0.13) 0%, transparent 65%);
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+.lp-orb-3 {
+  position: absolute;
+  width: 460px; height: 460px;
+  top: 45%; left: 50%;
+  background: radial-gradient(circle, rgba(123,47,255,0.10) 0%, transparent 65%);
+  border-radius: 50%;
+  filter: blur(72px);
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Dot grid background */
+.lp-dot-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.042) 1px, transparent 0);
+  background-size: 36px 36px;
+}
+
+/* Shimmer gradient text — CSS animation kept (not entrance, it's persistent) */
+@keyframes lp-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.lp-shimmer {
+  background: linear-gradient(90deg, #00D4FF 0%, #0066FF 35%, #a855f7 60%, #00D4FF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: lp-shimmer 5s linear infinite;
+}
+
+/* Landing CTA buttons */
+.lp-btn-primary {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.lp-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 40px -8px rgba(0,212,255,0.45);
+}
+.lp-btn-primary:active { transform: translateY(0); }
+
+.lp-btn-ghost {
+  transition: transform 0.22s ease, background 0.22s ease, border-color 0.22s ease;
+}
+.lp-btn-ghost:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.2);
 }

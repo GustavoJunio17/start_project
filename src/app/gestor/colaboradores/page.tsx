@@ -2,11 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DISCChart, DISCBars } from '@/components/disc/DISCChart'
 import { Pagination } from '@/components/ui/pagination'
@@ -16,9 +11,9 @@ import { Search, Eye, AlertTriangle } from 'lucide-react'
 const ITEMS_PER_PAGE = 20
 
 const STATUS_COLORS: Record<StatusColaborador, string> = {
-  em_treinamento: 'bg-blue-500/20 text-blue-400',
-  ativo: 'bg-green-500/20 text-green-400',
-  desligado: 'bg-red-500/20 text-red-400',
+  em_treinamento: 'bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20',
+  ativo: 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20',
+  desligado: 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20',
 }
 
 export default function GestorColaboradoresPage() {
@@ -45,7 +40,6 @@ export default function GestorColaboradoresPage() {
     c.cargo?.toLowerCase().includes(search.toLowerCase())
   )
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setPage(1), [search])
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -58,24 +52,28 @@ export default function GestorColaboradoresPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">Colaboradores</h1>
+      <h1 className="text-2xl font-bold text-white tracking-tight">Colaboradores</h1>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10 bg-card border-border" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+        <input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#00D4FF]/50 transition-colors" />
       </div>
 
       <Dialog open={!!selected} onOpenChange={open => !open && setSelected(null)}>
-        <DialogContent className="bg-card border-border max-w-lg">
+        <DialogContent className="bg-[#0A0E27] border-[#1e2a5e] max-w-lg">
           {selected && (
             <>
-              <DialogHeader><DialogTitle>{selected.nome}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle className="text-white">{selected.nome}</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <p className="text-muted-foreground">Cargo: <span className="text-foreground">{selected.cargo || '-'}</span></p>
-                  <p className="text-muted-foreground">E-mail: <span className="text-foreground">{selected.email || '-'}</span></p>
-                  <p className="text-muted-foreground">Status: <Badge className={STATUS_COLORS[selected.status]}>{selected.status}</Badge></p>
-                  <p className="text-muted-foreground">Origem: <span className="text-foreground">{selected.origem.replace(/_/g, ' ')}</span></p>
+                  <p className="text-gray-400">Cargo: <span className="text-white">{selected.cargo || '-'}</span></p>
+                  <p className="text-gray-400">E-mail: <span className="text-white">{selected.email || '-'}</span></p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400">Status:</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[selected.status]}`}>{selected.status}</span>
+                  </div>
+                  <p className="text-gray-400">Origem: <span className="text-white">{selected.origem.replace(/_/g, ' ')}</span></p>
                 </div>
                 {selected.perfil_disc && (
                   <>
@@ -89,57 +87,51 @@ export default function GestorColaboradoresPage() {
         </DialogContent>
       </Dialog>
 
-      <Card className="bg-card border-border">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border">
-                <TableHead>Nome</TableHead>
-                <TableHead>Cargo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Reavaliacao</TableHead>
-                <TableHead>DISC</TableHead>
-                <TableHead>Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8">Carregando...</TableCell></TableRow>
-              ) : paginated.map(c => (
-                <TableRow key={c.id} className="border-border">
-                  <TableCell>
-                    <p className="font-medium text-foreground">{c.nome}</p>
-                    <p className="text-xs text-muted-foreground">{c.email}</p>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.cargo || '-'}</TableCell>
-                  <TableCell><Badge className={STATUS_COLORS[c.status]}>{c.status}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      {needsReavaliacao(c) && <AlertTriangle className="w-3 h-3 text-[#EF4444]" />}
-                      <span className={`text-xs ${needsReavaliacao(c) ? 'text-[#EF4444]' : 'text-muted-foreground'}`}>
-                        {c.proxima_reavaliacao ? new Date(c.proxima_reavaliacao).toLocaleDateString('pt-BR') : '-'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="w-40">
-                    {c.perfil_disc ? <DISCBars perfil={c.perfil_disc} /> : <span className="text-xs text-muted-foreground">Pendente</span>}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => setSelected(c)}><Eye className="w-4 h-4" /></Button>
-                  </TableCell>
-                </TableRow>
+      <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#1e2a5e]">
+              {['Nome', 'Cargo', 'Status', 'Reavaliação', 'DISC', 'Ações'].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">{h}</th>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          totalItems={filtered.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-          onPageChange={setPage}
-        />
-      </Card>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="text-center py-8 text-gray-500">Carregando...</td></tr>
+            ) : paginated.map(c => (
+              <tr key={c.id} className="border-b border-[#1e2a5e]/50 hover:bg-white/[0.02] transition-colors last:border-0">
+                <td className="px-4 py-3.5">
+                  <p className="font-medium text-white">{c.nome}</p>
+                  <p className="text-xs text-gray-500">{c.email}</p>
+                </td>
+                <td className="px-4 py-3.5 text-gray-400">{c.cargo || '-'}</td>
+                <td className="px-4 py-3.5">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[c.status]}`}>{c.status}</span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center gap-1">
+                    {needsReavaliacao(c) && <AlertTriangle className="w-3 h-3 text-[#EF4444]" />}
+                    <span className={`text-xs ${needsReavaliacao(c) ? 'text-[#EF4444]' : 'text-gray-400'}`}>
+                      {c.proxima_reavaliacao ? new Date(c.proxima_reavaliacao).toLocaleDateString('pt-BR') : '-'}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5 w-40">
+                  {c.perfil_disc ? <DISCBars perfil={c.perfil_disc} /> : <span className="text-xs text-gray-600">Pendente</span>}
+                </td>
+                <td className="px-4 py-3.5">
+                  <button onClick={() => setSelected(c)}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors">
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination currentPage={page} totalPages={totalPages} totalItems={filtered.length} itemsPerPage={ITEMS_PER_PAGE} onPageChange={setPage} />
+      </div>
     </div>
   )
 }

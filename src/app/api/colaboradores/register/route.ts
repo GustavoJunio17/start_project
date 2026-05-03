@@ -6,7 +6,7 @@ import { requireRole } from '@/lib/auth/api-helpers'
 export async function POST(request: NextRequest) {
   let authUser
   try {
-    authUser = await requireRole(['super_admin', 'super_gestor', 'user_empresa', 'gestor_rh'])
+    authUser = await requireRole(['super_admin', 'super_gestor', 'admin', 'gestor_rh'])
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'UNAUTHORIZED') return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 })

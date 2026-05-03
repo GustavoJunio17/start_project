@@ -1,13 +1,28 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { getHomePath } from '@/hooks/useAuth'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0E27' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', borderBottom: '2px solid #00D4FF', animation: 'spin 1s linear infinite' }} />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
+  )
+}
+
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect')
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -22,23 +37,35 @@ export default function LoginPage() {
         credentials: 'include',
       })
 
-      const data = await res.json()
-
       if (!res.ok) {
-        setError(data.error || `Erro ${res.status}`)
+        let errorMsg = `Erro ${res.status}`
+        try {
+          const data = await res.json()
+          errorMsg = data.error || errorMsg
+        } catch {}
+        setError(errorMsg)
         setLoading(false)
         return
       }
 
-      // Hard redirect so the browser sends the newly-set cookie on the next request.
-      // router.push() can miss the cookie in Next.js App Router RSC cache.
-      const destination = data.data?.role ? getHomePath(data.data.role) : '/redirect'
+      const data = await res.json()
+
+      const safeRedirect =
+        redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')
+          ? redirectTo
+          : null
+
+      const destination = safeRedirect || (data.data?.role ? getHomePath(data.data.role) : '/redirect')
       window.location.href = destination
     } catch {
       setError('Erro de conexão')
       setLoading(false)
     }
   }
+
+  const registerHref = redirectTo
+    ? `/auth/register?redirect=${encodeURIComponent(redirectTo)}`
+    : '/auth/register'
 
   return (
     <>
@@ -227,7 +254,7 @@ export default function LoginPage() {
           {error && <div className="error">{error}</div>}
 
           <div className="links">
-            <p>Candidato? <a href="/auth/register">Cadastre-se</a></p>
+            <p>Candidato? <a href={registerHref}>Cadastre-se</a></p>
             <p><a href="/auth/forgot-password">Esqueceu a senha?</a></p>
             <p>Super Admin? <a href="/setup-admin">Setup</a></p>
           </div>

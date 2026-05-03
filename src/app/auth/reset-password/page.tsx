@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Zap, AlertCircle, CheckCircle, Lock } from 'lucide-react'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -15,14 +16,14 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
-    if (!token) setError('Token nao encontrado. Use o link enviado por e-mail.')
+    if (!token) setError('Token não encontrado. Use o link enviado por e-mail.')
   }, [token])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (password !== confirm) {
-      setError('As senhas nao conferem')
+      setError('As senhas não conferem')
       return
     }
     setLoading(true)
@@ -40,46 +41,43 @@ function ResetPasswordForm() {
         setTimeout(() => router.push('/auth/login'), 3000)
       }
     } catch {
-      setError('Erro de conexao')
+      setError('Erro de conexão')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <>
-      <style>{`
-        html, body { height: 100%; margin: 0; padding: 0; background-color: #0A0E27; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-        .container { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background-color: #0A0E27; }
-        .card { width: 100%; max-width: 420px; background: #111633; border: 1px solid #1e2a5e; border-radius: 12px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        h1 { font-size: 28px; font-weight: 700; text-align: center; margin-bottom: 10px; background: linear-gradient(to right, #00D4FF, #0066FF); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .subtitle { text-align: center; color: #7a8aaa; font-size: 14px; margin-bottom: 30px; }
-        .form-group { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 14px; color: #e0e7ff; }
-        input { width: 100%; padding: 12px 14px; background: #0A0E27; border: 1px solid #1e2a5e; border-radius: 8px; color: #fff; font-size: 14px; transition: all 0.2s; }
-        input:focus { outline: none; border-color: #00D4FF; box-shadow: 0 0 0 3px rgba(0,212,255,0.1); }
-        .hint { font-size: 11px; color: #7a8aaa; margin-top: 6px; }
-        button { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(to right, #00D4FF, #0099FF); color: #000; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        button:disabled { opacity: 0.6; cursor: not-allowed; }
-        .success { margin-top: 16px; padding: 12px; background: #0d2d1a; border: 1px solid #1a5c35; border-radius: 8px; color: #4ade80; font-size: 14px; text-align: center; }
-        .error { margin-top: 16px; padding: 12px; background: #2d0d0d; border: 1px solid #5c1a1a; border-radius: 8px; color: #f87171; font-size: 14px; text-align: center; }
-        .back-link { text-align: center; margin-top: 20px; font-size: 14px; color: #7a8aaa; }
-        .back-link a { color: #00D4FF; text-decoration: none; }
-      `}</style>
-      <div className="container">
-        <div className="card">
-          <h1>Nova Senha</h1>
-          <p className="subtitle">Escolha uma nova senha segura para sua conta.</p>
+    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center gap-2.5 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00D4FF] to-[#0066FF] flex items-center justify-center shadow-lg shadow-[#00D4FF]/20">
+              <Zap size={18} className="text-white" />
+            </div>
+            <span className="text-xl font-bold text-white">START <span className="text-[#00D4FF]">PRO</span></span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Nova Senha</h1>
+          <p className="text-gray-400 text-sm mt-2">Escolha uma nova senha segura para sua conta.</p>
+        </div>
+
+        {/* Form card */}
+        <div className="bg-[#111633] border border-[#1e2a5e] rounded-2xl p-8">
           {success ? (
-            <div className="success">
-              Senha redefinida com sucesso! Redirecionando para o login...
+            <div className="flex flex-col items-center py-4 text-center">
+              <div className="w-14 h-14 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center mb-4">
+                <CheckCircle size={28} className="text-[#10B981]" />
+              </div>
+              <h3 className="text-white font-semibold mb-2">Senha redefinida!</h3>
+              <p className="text-gray-400 text-sm">Redirecionando para o login...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="password">Nova Senha</label>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1.5">
+                  Nova Senha
+                </label>
                 <input
                   id="password"
                   type="password"
@@ -88,11 +86,14 @@ function ResetPasswordForm() {
                   required
                   disabled={loading || !token}
                   minLength={8}
+                  className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#00D4FF]/60 focus:ring-1 focus:ring-[#00D4FF]/15 transition-colors disabled:opacity-60"
                 />
-                <p className="hint">Minimo 8 caracteres, uma maiuscula, uma minuscula e um numero.</p>
+                <p className="text-xs text-gray-500 mt-1.5">Mínimo 8 caracteres, uma maiúscula, uma minúscula e um número.</p>
               </div>
-              <div className="form-group">
-                <label htmlFor="confirm">Confirmar Senha</label>
+              <div>
+                <label htmlFor="confirm" className="block text-sm font-medium text-gray-300 mb-1.5">
+                  Confirmar Senha
+                </label>
                 <input
                   id="confirm"
                   type="password"
@@ -100,20 +101,46 @@ function ResetPasswordForm() {
                   onChange={e => setConfirm(e.target.value)}
                   required
                   disabled={loading || !token}
+                  className="w-full bg-[#0A0E27] border border-[#1e2a5e] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-[#00D4FF]/60 focus:ring-1 focus:ring-[#00D4FF]/15 transition-colors disabled:opacity-60"
                 />
               </div>
-              <button type="submit" disabled={loading || !token}>
-                {loading ? 'Salvando...' : 'Redefinir Senha'}
+
+              {error && (
+                <div className="flex items-start gap-2.5 p-3.5 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !token}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold text-sm hover:opacity-90 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:translate-y-0"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Lock size={15} />
+                    Redefinir Senha
+                  </>
+                )}
               </button>
-              {error && <div className="error">{error}</div>}
             </form>
           )}
-          <div className="back-link">
-            <a href="/auth/login">← Voltar ao login</a>
-          </div>
+        </div>
+
+        {/* Back link */}
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <a href="/auth/login" className="text-[#00D4FF] hover:text-[#00D4FF]/80 font-medium transition-colors">
+            ← Voltar ao login
+          </a>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 import { useCargosEDepartamentos } from '@/hooks/useCargosEDepartamentos'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save } from 'lucide-react'
 import { toast, Toaster } from 'sonner'
 import { formatBRDateInput, formatDateToISO, formatDateToBR } from '@/lib/utils/date'
+import { formatBRL, centsToFloat, floatToCents } from '@/lib/utils/currency'
 import type { TemplateTeste } from '@/types/database'
 
 export default function EditarVagaPage() {
@@ -21,7 +21,7 @@ export default function EditarVagaPage() {
   const router = useRouter()
   const params = useParams()
   const vagaId = params.id as string
-  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(user?.empresa_id)
+  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(user?.empresa_id, user?.role, user?.id)
 
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -76,7 +76,7 @@ export default function EditarVagaPage() {
           categoria: data.categoria || '',
           modelo_trabalho: data.modelo_trabalho || '',
           regime: data.regime || '',
-          salario: data.salario ? String(data.salario) : '',
+          salario: floatToCents(data.salario),
           hard_skills: Array.isArray(data.hard_skills) ? data.hard_skills.join(', ') : '',
           idiomas: Array.isArray(data.idiomas) ? data.idiomas.map((i: any) => `${i.idioma}: ${i.nivel}`).join('; ') : '',
           escolaridade_minima: data.escolaridade_minima || '',
@@ -93,6 +93,16 @@ export default function EditarVagaPage() {
 
     loadVaga()
   }, [vagaId])
+
+  const selectedDepartamentoId = departamentos.find(d => d.nome === form.departamento)?.id ?? ''
+  const filteredCargos = selectedDepartamentoId
+    ? cargos.filter(c => c.departamento_id === selectedDepartamentoId)
+    : cargos
+
+  const handleDepartamentoChange = (val: string | null) => {
+    if (!val) return
+    setForm(f => ({ ...f, departamento: val, cargo: '' }))
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,7 +151,7 @@ export default function EditarVagaPage() {
           template_testes_id: form.template_testes_id || null,
           modelo_trabalho: form.modelo_trabalho || null,
           regime: form.regime || null,
-          salario: form.salario ? parseFloat(form.salario) : null,
+          salario: centsToFloat(form.salario),
           hard_skills: hard_skills,
           idiomas: idiomas,
           escolaridade_minima: form.escolaridade_minima || null,
@@ -187,12 +197,12 @@ export default function EditarVagaPage() {
 
         <form onSubmit={handleSave}>
           <div className="grid gap-6">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Informações Principais</CardTitle>
-                <CardDescription>Detalhes básicos da vaga</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1e2a5e]">
+                <p className="font-semibold text-white">Informações Principais</p>
+                <p className="text-sm text-gray-400 mt-1">Detalhes básicos da vaga</p>
+              </div>
+              <div className="p-5">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Título da Vaga *</Label>
@@ -206,13 +216,15 @@ export default function EditarVagaPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Cargo
-                      {!cargosDeptLoading && cargos.length === 0 && (
-                        <span className="text-orange-400 text-xs ml-1">(nenhum cadastrado)</span>
+                      {!cargosDeptLoading && filteredCargos.length === 0 && (
+                        <span className="text-orange-400 text-xs ml-1">
+                          {cargos.length === 0 ? '(nenhum cadastrado)' : '(selecione um departamento)'}
+                        </span>
                       )}
                     </Label>
                     {cargosDeptLoading ? (
                       <div className="h-10 bg-background rounded border border-border animate-pulse" />
-                    ) : cargos.length > 0 ? (
+                    ) : filteredCargos.length > 0 ? (
                       <Select
                         value={form.cargo}
                         onValueChange={(val) => val !== null && setForm({ ...form, cargo: val })}
@@ -221,7 +233,7 @@ export default function EditarVagaPage() {
                           <SelectValue placeholder="Selecione um cargo" />
                         </SelectTrigger>
                         <SelectContent>
-                          {cargos.map(cargo => (
+                          {filteredCargos.map(cargo => (
                             <SelectItem key={cargo.id} value={cargo.nome}>{cargo.nome}</SelectItem>
                           ))}
                         </SelectContent>
@@ -232,6 +244,7 @@ export default function EditarVagaPage() {
                         onChange={(e) => setForm({ ...form, cargo: e.target.value })}
                         className="bg-background"
                         placeholder="Ex: Desenvolvedor, Engenheiro"
+                        disabled={!!selectedDepartamentoId && cargos.length > 0}
                       />
                     )}
                   </div>
@@ -256,15 +269,15 @@ export default function EditarVagaPage() {
                     placeholder="Liste as habilidades, qualificações e experiências necessárias..."
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Teste Aplicado</CardTitle>
-                <CardDescription>Selecione qual template de testes será aplicado aos candidatos desta vaga (opcional)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1e2a5e]">
+                <p className="font-semibold text-white">Teste Aplicado</p>
+                <p className="text-sm text-gray-400 mt-1">Selecione qual template de testes será aplicado aos candidatos desta vaga (opcional)</p>
+              </div>
+              <div className="p-5">
                 <div className="space-y-2">
                   <Label>Template de Testes</Label>
                   <select
@@ -283,15 +296,15 @@ export default function EditarVagaPage() {
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Informações de Contrato</CardTitle>
-                <CardDescription>Detalhes sobre o tipo de contrato e compensação</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1e2a5e]">
+                <p className="font-semibold text-white">Informações de Contrato</p>
+                <p className="text-sm text-gray-400 mt-1">Detalhes sobre o tipo de contrato e compensação</p>
+              </div>
+              <div className="p-5">
                 <div className="grid md:grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label>Modelo de Trabalho</Label>
@@ -333,12 +346,12 @@ export default function EditarVagaPage() {
                   <div className="space-y-2">
                     <Label>Salário</Label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      value={form.salario}
-                      onChange={e => setForm({ ...form, salario: e.target.value })}
+                      type="text"
+                      inputMode="numeric"
+                      value={formatBRL(form.salario)}
+                      onChange={e => setForm({ ...form, salario: e.target.value.replace(/\D/g, '') })}
                       className="bg-background"
-                      placeholder="0.00"
+                      placeholder="R$ 0,00"
                     />
                   </div>
                 </div>
@@ -366,7 +379,7 @@ export default function EditarVagaPage() {
                   ) : departamentos.length > 0 ? (
                     <Select
                       value={form.departamento}
-                      onValueChange={(val) => val !== null && setForm({ ...form, departamento: val })}
+                      onValueChange={handleDepartamentoChange}
                     >
                       <SelectTrigger className="bg-background">
                         <SelectValue placeholder="Selecione um departamento" />
@@ -386,15 +399,15 @@ export default function EditarVagaPage() {
                     />
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Especificações Técnicas</CardTitle>
-                <CardDescription>Habilidades, idiomas e requisitos educacionais</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1e2a5e]">
+                <p className="font-semibold text-white">Especificações Técnicas</p>
+                <p className="text-sm text-gray-400 mt-1">Habilidades, idiomas e requisitos educacionais</p>
+              </div>
+              <div className="p-5">
                 <div className="space-y-2">
                   <Label>Hard Skills (Tecnologias)</Label>
                   <Textarea
@@ -428,15 +441,15 @@ export default function EditarVagaPage() {
                     <option value="Pos">Pós-graduação</option>
                   </select>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Diferenciais e Benefícios</CardTitle>
-                <CardDescription>O que você oferece e pontos diferenciais</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1e2a5e]">
+                <p className="font-semibold text-white">Diferenciais e Benefícios</p>
+                <p className="text-sm text-gray-400 mt-1">O que você oferece e pontos diferenciais</p>
+              </div>
+              <div className="p-5">
                 <div className="space-y-2">
                   <Label>Benefícios</Label>
                   <Textarea
@@ -456,8 +469,8 @@ export default function EditarVagaPage() {
                     placeholder="O que não é obrigatório, mas soma pontos..."
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={() => router.back()} disabled={saving}>

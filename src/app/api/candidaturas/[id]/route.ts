@@ -25,7 +25,7 @@ async function handleGET(req: NextRequest, context?: { params?: { id: string } }
 
   // Adicionar filtro de permissão
   if (user.role !== 'super_admin' && user.role !== 'super_gestor') {
-    if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+    if (user.role === 'admin' || user.role === 'gestor_rh') {
       query += ' AND c.empresa_id = $2'
       queryParams.push(user.empresa_id as string)
     } else if (user.role === 'candidato') {
@@ -74,7 +74,7 @@ async function handlePUT(req: NextRequest, context?: { params?: { id: string } }
   const hasPermission = 
     user.role === 'super_admin' || 
     user.role === 'super_gestor' || 
-    (user.role === 'user_empresa' && candidatura.empresa_id === user.empresa_id) ||
+    (user.role === 'admin' && candidatura.empresa_id === user.empresa_id) ||
     (user.role === 'gestor_rh' && candidatura.empresa_id === user.empresa_id) ||
     (user.role === 'candidato' && candidatura.user_id === user.id)
 
@@ -160,7 +160,7 @@ async function handleDELETE(req: NextRequest, context?: { params?: { id: string 
   const hasPermission = 
     user.role === 'super_admin' || 
     user.role === 'super_gestor' || 
-    (user.role === 'user_empresa' && candidatura.empresa_id === user.empresa_id) ||
+    (user.role === 'admin' && candidatura.empresa_id === user.empresa_id) ||
     (user.role === 'gestor_rh' && candidatura.empresa_id === user.empresa_id) ||
     (user.role === 'candidato' && candidatura.user_id === user.id)
 

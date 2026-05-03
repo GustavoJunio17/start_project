@@ -5,9 +5,9 @@ import { ListarColaboradores } from "@/components/admin/colaboradores/ListarCola
 export default function ColaboradoresPage() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Gestão de Colaboradores</h1>
-        <p className="text-sm text-muted-foreground">
+      <div>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Gestão de Colaboradores</h1>
+        <p className="text-gray-400 text-sm mt-1">
           Gerencie e visualize todos os colaboradores das empresas cadastradas no sistema.
         </p>
       </div>

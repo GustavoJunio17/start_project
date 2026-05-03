@@ -2,63 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { FileText, ListChecks, Zap, Award, Layers, ArrowLeft, Upload } from 'lucide-react'
+import { FileText, ListChecks, Award, Layers, ArrowLeft, Upload, CheckCircle, LogIn, UserPlus } from 'lucide-react'
 import type { Vaga } from '@/types/database'
-
-const STATUS_COLORS: Record<string, string> = {
-  rascunho: 'bg-blue-500/20 text-blue-400',
-  aberta: 'bg-green-500/20 text-green-400',
-  pausada: 'bg-yellow-500/20 text-yellow-400',
-  encerrada: 'bg-red-500/20 text-red-400',
-}
 
 export default function VagaDetailPage() {
   const params = useParams()
   const vagaId = params.id as string
-
+  const { user, loading: authLoading } = useAuth()
   const [vaga, setVaga] = useState<Vaga | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [vagaLoading, setVagaLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [fileName, setFileName] = useState<string>('')
-
-  const [formData, setFormData] = useState({
-    nome: '',
-    email: '',
-    telefone: '',
-    linkedin: '',
-    pretensaoSalarial: '',
-    mensagem: '',
-    curriculo: null as File | null,
-  })
+  const [formData, setFormData] = useState({ telefone: '', linkedin: '', pretensaoSalarial: '', mensagem: '', curriculo: null as File | null })
 
   useEffect(() => {
-    const loadVaga = async () => {
-      if (!vagaId) return
-      try {
-        const response = await fetch(`/api/vagas/${vagaId}/details`)
-        if (!response.ok) {
-          setVaga(null)
-        } else {
-          const data = await response.json()
-          setVaga(data)
-        }
-      } catch (error) {
-        console.error('Erro ao carregar vaga:', error)
-        setVaga(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadVaga()
+    if (!vagaId) return
+    fetch(`/api/vagas/${vagaId}/details`).then(r => r.ok ? r.json() : null).then(setVaga).catch(() => setVaga(null)).finally(() => setVagaLoading(false))
   }, [vagaId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -69,10 +32,7 @@ export default function VagaDetailPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Arquivo muito grande (máx. 5MB)')
-        return
-      }
+      if (file.size > 5 * 1024 * 1024) { toast.error('Arquivo muito grande (máx. 5MB)'); return }
       setFormData(prev => ({ ...prev, curriculo: file }))
       setFileName(file.name)
     }
@@ -80,78 +40,43 @@ export default function VagaDetailPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.nome || !formData.email || !formData.telefone || !formData.curriculo) {
-      toast.error('Preencha todos os campos obrigatórios')
-      return
-    }
-
+    if (!formData.telefone || !formData.curriculo) { toast.error('Preencha todos os campos obrigatórios'); return }
     setSubmitting(true)
-
     try {
-      const formDataToSend = new FormData()
-      formDataToSend.append('vaga_id', vagaId)
-      formDataToSend.append('nome', formData.nome)
-      formDataToSend.append('email', formData.email)
-      formDataToSend.append('telefone', formData.telefone)
-      formDataToSend.append('linkedin', formData.linkedin)
-      formDataToSend.append('pretensao_salarial', formData.pretensaoSalarial)
-      formDataToSend.append('mensagem', formData.mensagem)
-      formDataToSend.append('curriculo', formData.curriculo)
-
-      const response = await fetch('/api/candidaturas/submit', {
-        method: 'POST',
-        body: formDataToSend,
-      })
-
-      if (!response.ok) {
-        throw new Error('Erro ao enviar candidatura')
-      }
-
-      toast.success('Candidatura enviada com sucesso!')
-      setFormData({
-        nome: '',
-        email: '',
-        telefone: '',
-        linkedin: '',
-        pretensaoSalarial: '',
-        mensagem: '',
-        curriculo: null,
-      })
-      setFileName('')
-    } catch (error) {
-      console.error(error)
-      toast.error('Erro ao enviar candidatura')
-    } finally {
-      setSubmitting(false)
-    }
+      const fd = new FormData()
+      fd.append('vaga_id', vagaId); fd.append('telefone', formData.telefone); fd.append('linkedin', formData.linkedin)
+      fd.append('pretensao_salarial', formData.pretensaoSalarial); fd.append('mensagem', formData.mensagem); fd.append('curriculo', formData.curriculo)
+      const response = await fetch('/api/candidaturas/submit', { method: 'POST', body: fd, credentials: 'include' })
+      if (response.status === 409) { toast.error('Você já enviou uma candidatura para esta vaga'); setSubmitted(true); return }
+      if (!response.ok) throw new Error()
+      setSubmitted(true)
+    } catch { toast.error('Erro ao enviar candidatura') }
+    finally { setSubmitting(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a] flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    )
-  }
+  const inputClass = "w-full px-3 py-2.5 bg-[#0A0E27] border border-[#1e2a5e] rounded-lg text-white text-sm focus:outline-none focus:border-[#00D4FF]/50 transition-colors placeholder-gray-600"
+  const cardClass = "bg-[#111633] border border-[#1e2a5e] rounded-xl"
+  const sectionClass = "bg-[#0A0E27] border border-[#1e2a5e] rounded-xl p-4"
+  const redirectParam = encodeURIComponent(`/vagas/${vagaId}`)
 
-  if (!vaga) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a] flex flex-col items-center justify-center">
-        <p className="text-muted-foreground mb-4">Vaga não encontrada ou não está disponível</p>
-        <Link href="/vagas">
-          <Button variant="outline">Voltar para vagas</Button>
-        </Link>
-      </div>
-    )
-  }
+  if (vagaLoading || authLoading) return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[#00D4FF]/20 border-t-[#00D4FF] rounded-full animate-spin" />
+    </div>
+  )
+
+  if (!vaga) return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a] flex flex-col items-center justify-center gap-4">
+      <p className="text-gray-400">Vaga não encontrada ou não está disponível</p>
+      <Link href="/vagas" className="px-4 py-2 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">Voltar para vagas</Link>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0A0E27] to-[#1a1f3a]">
       <header className="flex items-center justify-between px-6 py-4 border-b border-[#1e2a5e]">
         <Link href="/vagas" className="flex items-center gap-2 text-[#00D4FF] hover:text-white transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Voltar</span>
+          <ArrowLeft className="w-4 h-4" /><span>Voltar</span>
         </Link>
         <h1 className="text-xl font-bold text-white">Candidatar-se</h1>
         <div className="w-16" />
@@ -159,257 +84,119 @@ export default function VagaDetailPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Detalhes da Vaga */}
-          <div className="space-y-6">
-            {/* Cabeçalho */}
-            <div className="bg-card border border-border rounded-lg p-6">
-              <div className="flex items-start justify-between mb-4">
+          <div className="space-y-4">
+            <div className={`${cardClass} p-6`}>
+              <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h2 className="text-3xl font-bold text-foreground mb-1">{vaga.titulo}</h2>
+                  <h2 className="text-3xl font-bold text-white mb-1">{vaga.titulo}</h2>
                   <p className="text-lg text-[#00D4FF]">{vaga.empresa?.nome}</p>
                 </div>
-                <Badge className={STATUS_COLORS[vaga.status]}>Aberta</Badge>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">Aberta</span>
               </div>
-              {vaga.categoria && (
-                <Badge variant="outline" className="mb-4">
-                  {vaga.categoria}
-                </Badge>
-              )}
+              {vaga.categoria && <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs border border-[#1e2a5e] text-gray-400">{vaga.categoria}</span>}
             </div>
 
-            {/* Descrição */}
             {vaga.descricao && (
-              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="w-4 h-4 text-[#00D4FF]" />
-                  <h3 className="font-semibold text-sm">Descrição</h3>
-                </div>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words leading-relaxed">
-                  {vaga.descricao}
-                </p>
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3"><FileText className="w-4 h-4 text-[#00D4FF]" /><h3 className="font-semibold text-sm text-white">Descrição</h3></div>
+                <p className="text-sm text-gray-400 whitespace-pre-wrap leading-relaxed">{vaga.descricao}</p>
               </div>
             )}
 
-            {/* Requisitos */}
             {vaga.requisitos && (
-              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                <div className="flex items-center gap-2 mb-3">
-                  <ListChecks className="w-4 h-4 text-[#00D4FF]" />
-                  <h3 className="font-semibold text-sm">Requisitos</h3>
-                </div>
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3"><ListChecks className="w-4 h-4 text-[#00D4FF]" /><h3 className="font-semibold text-sm text-white">Requisitos</h3></div>
                 <div className="space-y-2">
                   {vaga.requisitos.split('\n').filter(r => r.trim()).map((req, idx) => (
-                    <div key={idx} className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="text-[#00D4FF] font-bold mt-0.5">•</span>
-                      <span>{req.trim()}</span>
+                    <div key={idx} className="flex gap-2 text-sm text-gray-400">
+                      <span className="text-[#00D4FF] font-bold mt-0.5">•</span><span>{req.trim()}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Especificações */}
             {(vaga.hard_skills?.length || vaga.idiomas?.length || vaga.escolaridade_minima) && (
-              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Layers className="w-4 h-4 text-[#00D4FF]" />
-                  <h3 className="font-semibold text-sm">Especificações Técnicas</h3>
-                </div>
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3"><Layers className="w-4 h-4 text-[#00D4FF]" /><h3 className="font-semibold text-sm text-white">Especificações Técnicas</h3></div>
                 <div className="space-y-3">
-                  {vaga.hard_skills?.length > 0 && (
+                  {(vaga.hard_skills?.length ?? 0) > 0 && (
                     <div>
-                      <span className="text-xs text-muted-foreground font-medium block mb-2">Hard Skills:</span>
-                      <div className="flex flex-wrap gap-2">
-                        {vaga.hard_skills.map((skill: string, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
+                      <span className="text-xs text-gray-500 font-medium block mb-2">Hard Skills:</span>
+                      <div className="flex flex-wrap gap-2">{vaga.hard_skills?.map((s: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full text-xs border border-[#1e2a5e] text-gray-400">{s}</span>)}</div>
                     </div>
                   )}
-                  {vaga.idiomas?.length > 0 && (
+                  {(vaga.idiomas?.length ?? 0) > 0 && (
                     <div>
-                      <span className="text-xs text-muted-foreground font-medium block mb-2">Idiomas:</span>
-                      <div className="flex flex-wrap gap-2">
-                        {vaga.idiomas.map((idioma: any, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {idioma.idioma} • {idioma.nivel}
-                          </Badge>
-                        ))}
-                      </div>
+                      <span className="text-xs text-gray-500 font-medium block mb-2">Idiomas:</span>
+                      <div className="flex flex-wrap gap-2">{vaga.idiomas?.map((id: any, i: number) => <span key={i} className="px-2 py-0.5 rounded-full text-xs border border-[#1e2a5e] text-gray-400">{id.idioma} • {id.nivel}</span>)}</div>
                     </div>
                   )}
-                  {vaga.escolaridade_minima && (
-                    <div>
-                      <span className="text-xs text-muted-foreground font-medium block mb-1">Escolaridade:</span>
-                      <p className="text-sm text-foreground">{vaga.escolaridade_minima}</p>
-                    </div>
-                  )}
+                  {vaga.escolaridade_minima && <div><span className="text-xs text-gray-500 font-medium block mb-1">Escolaridade:</span><p className="text-sm text-gray-300">{vaga.escolaridade_minima}</p></div>}
                 </div>
               </div>
             )}
 
-            {/* Benefícios */}
             {(vaga.beneficios?.length || vaga.diferenciais) && (
-              <div className="bg-secondary/30 rounded-lg p-4 border border-border">
-                <div className="flex items-center gap-2 mb-3">
-                  <Award className="w-4 h-4 text-[#00D4FF]" />
-                  <h3 className="font-semibold text-sm">Benefícios & Diferenciais</h3>
-                </div>
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3"><Award className="w-4 h-4 text-[#00D4FF]" /><h3 className="font-semibold text-sm text-white">Benefícios & Diferenciais</h3></div>
                 <div className="space-y-3">
-                  {vaga.beneficios?.length > 0 && (
-                    <div>
-                      <span className="text-xs text-muted-foreground font-medium block mb-2">Benefícios:</span>
-                      <div className="flex flex-wrap gap-2">
-                        {vaga.beneficios.map((beneficio: string, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {beneficio}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {vaga.diferenciais && (
-                    <div>
-                      <span className="text-xs text-muted-foreground font-medium block mb-2">Diferenciais:</span>
-                      <p className="text-sm text-muted-foreground">{vaga.diferenciais}</p>
-                    </div>
-                  )}
+                  {(vaga.beneficios?.length ?? 0) > 0 && <div><span className="text-xs text-gray-500 font-medium block mb-2">Benefícios:</span><div className="flex flex-wrap gap-2">{vaga.beneficios?.map((b: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full text-xs border border-[#1e2a5e] text-gray-400">{b}</span>)}</div></div>}
+                  {vaga.diferenciais && <div><span className="text-xs text-gray-500 font-medium block mb-2">Diferenciais:</span><p className="text-sm text-gray-400">{vaga.diferenciais}</p></div>}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Formulário de Candidatura */}
           <div>
-            <Card className="bg-card border-border sticky top-6">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-foreground mb-4">Envie sua Candidatura</h3>
+            {!user ? (
+              <div className={`${cardClass} p-8 flex flex-col items-center text-center gap-6 sticky top-6`}>
+                <div className="w-14 h-14 rounded-full bg-[#00D4FF]/10 flex items-center justify-center"><LogIn className="w-7 h-7 text-[#00D4FF]" /></div>
+                <div><h3 className="text-lg font-semibold text-white mb-1">Faça login para se candidatar</h3><p className="text-sm text-gray-400">Você precisa ter uma conta para enviar sua candidatura.</p></div>
+                <div className="w-full space-y-3">
+                  <Link href={`/auth/login?redirect=${redirectParam}`} className="flex items-center justify-center gap-2 w-full py-2.5 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all">
+                    <LogIn className="w-4 h-4" /> Entrar
+                  </Link>
+                  <Link href={`/auth/register?redirect=${redirectParam}`} className="flex items-center justify-center gap-2 w-full py-2.5 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">
+                    <UserPlus className="w-4 h-4" /> Criar conta
+                  </Link>
+                </div>
+                <p className="text-xs text-gray-500">Após o login você será redirecionado de volta para esta vaga.</p>
+              </div>
+            ) : user.role !== 'candidato' ? (
+              <div className={`${cardClass} p-8 flex flex-col items-center text-center gap-4 sticky top-6`}>
+                <p className="text-sm text-gray-400">Apenas candidatos podem se candidatar a vagas. Faça login com uma conta de candidato.</p>
+                <Link href="/auth/login" className="px-4 py-2 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">Trocar conta</Link>
+              </div>
+            ) : submitted ? (
+              <div className={`${cardClass} p-8 flex flex-col items-center text-center gap-4 sticky top-6`}>
+                <div className="w-14 h-14 rounded-full bg-[#10B981]/10 flex items-center justify-center"><CheckCircle className="w-7 h-7 text-[#10B981]" /></div>
+                <div><h3 className="text-lg font-semibold text-white mb-1">Candidatura enviada!</h3><p className="text-sm text-gray-400">Sua candidatura para <strong className="text-white">{vaga.titulo}</strong> foi registrada com sucesso.</p></div>
+                <Link href="/vagas" className="px-4 py-2 border border-[#1e2a5e] text-gray-300 rounded-lg text-sm hover:bg-[#1e2a5e]/50 hover:text-white transition-all">Ver mais vagas</Link>
+                <Link href="/candidato/dashboard" className="px-4 py-2 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all">Meu painel</Link>
+              </div>
+            ) : (
+              <div className={`${cardClass} p-6 sticky top-6`}>
+                <h3 className="text-lg font-semibold text-white mb-1">Envie sua Candidatura</h3>
+                <p className="text-xs text-gray-500 mb-4">Candidatando como <span className="text-[#00D4FF]">{user.email}</span></p>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <Label htmlFor="nome" className="text-xs font-semibold mb-1.5">
-                      Nome Completo *
-                    </Label>
-                    <Input
-                      id="nome"
-                      name="nome"
-                      value={formData.nome}
-                      onChange={handleInputChange}
-                      placeholder="Seu nome"
-                      className="bg-secondary border-border"
-                      required
-                    />
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Telefone / WhatsApp *</label><input name="telefone" value={formData.telefone} onChange={handleInputChange} placeholder="(11) 98765-4321" required className={inputClass} /></div>
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">LinkedIn</label><input name="linkedin" value={formData.linkedin} onChange={handleInputChange} placeholder="linkedin.com/in/seu-perfil" className={inputClass} /></div>
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Pretensão Salarial</label><input name="pretensaoSalarial" value={formData.pretensaoSalarial} onChange={handleInputChange} placeholder="R$ 5.000,00" className={inputClass} /></div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-300">Currículo (PDF/DOC) *</label>
+                    <input id="curriculo" type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} className="hidden" required />
+                    <label htmlFor="curriculo" className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[#1e2a5e] rounded-lg cursor-pointer hover:border-[#00D4FF]/50 transition-colors bg-[#0A0E27]">
+                      <Upload className="w-4 h-4 text-gray-500" /><span className="text-xs text-gray-500">{fileName || 'Escolha um arquivo'}</span>
+                    </label>
                   </div>
-
-                  <div>
-                    <Label htmlFor="email" className="text-xs font-semibold mb-1.5">
-                      Email *
-                    </Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="seu@email.com"
-                      className="bg-secondary border-border"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="telefone" className="text-xs font-semibold mb-1.5">
-                      Telefone *
-                    </Label>
-                    <Input
-                      id="telefone"
-                      name="telefone"
-                      value={formData.telefone}
-                      onChange={handleInputChange}
-                      placeholder="(11) 98765-4321"
-                      className="bg-secondary border-border"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="linkedin" className="text-xs font-semibold mb-1.5">
-                      LinkedIn
-                    </Label>
-                    <Input
-                      id="linkedin"
-                      name="linkedin"
-                      value={formData.linkedin}
-                      onChange={handleInputChange}
-                      placeholder="linkedin.com/in/seu-perfil"
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="pretensaoSalarial" className="text-xs font-semibold mb-1.5">
-                      Pretensão Salarial
-                    </Label>
-                    <Input
-                      id="pretensaoSalarial"
-                      name="pretensaoSalarial"
-                      value={formData.pretensaoSalarial}
-                      onChange={handleInputChange}
-                      placeholder="R$ 5.000,00"
-                      className="bg-secondary border-border"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="curriculo" className="text-xs font-semibold mb-1.5">
-                      Currículo (PDF/DOC) *
-                    </Label>
-                    <div className="relative">
-                      <input
-                        id="curriculo"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        required
-                      />
-                      <label
-                        htmlFor="curriculo"
-                        className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-[#00D4FF]/50 transition-colors bg-secondary/50"
-                      >
-                        <Upload className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {fileName || 'Escolha um arquivo'}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="mensagem" className="text-xs font-semibold mb-1.5">
-                      Mensagem (opcional)
-                    </Label>
-                    <Textarea
-                      id="mensagem"
-                      name="mensagem"
-                      value={formData.mensagem}
-                      onChange={handleInputChange}
-                      placeholder="Conte mais sobre você..."
-                      className="bg-secondary border-border text-xs min-h-20"
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-gradient-to-r from-[#00D4FF] to-[#0066FF] hover:opacity-90"
-                  >
+                  <div className="space-y-1.5"><label className="text-xs font-semibold text-gray-300">Mensagem (opcional)</label><textarea name="mensagem" value={formData.mensagem} onChange={handleInputChange} placeholder="Conte mais sobre você..." rows={3} className={`${inputClass} resize-none`} /></div>
+                  <button type="submit" disabled={submitting} className="w-full py-2.5 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60">
                     {submitting ? 'Enviando...' : 'Enviar Candidatura'}
-                  </Button>
+                  </button>
                 </form>
-              </CardContent>
-            </Card>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -7,10 +7,14 @@ async function handlePUT(
   request: NextRequest,
   context: { params: Promise<Record<string, string>> },
 ) {
-  await requireRole(['super_admin', 'super_gestor'])
+  const caller = await requireRole(['super_admin', 'super_gestor'])
 
   const { id } = await context.params
   const { nome_completo, role, password, ativo } = await request.json()
+
+  if (role !== undefined && caller.role === 'super_gestor' && ['super_admin', 'super_gestor'].includes(role)) {
+    return errorResponse('Super Gestor não pode atribuir roles de super_admin ou super_gestor', 403)
+  }
 
   const queryParts: string[] = []
   const values: unknown[] = []

@@ -168,7 +168,7 @@ export function FormCadastroEmpresa() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
+      <div className="bg-[#0A0E27] rounded-lg border border-[#1e2a5e] overflow-hidden">
         <div className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF] px-6 py-4">
           <h1 className="text-2xl font-bold text-white">Cadastrar Nova Empresa</h1>
           <p className="text-white/70 mt-1">Crie uma nova empresa no sistema</p>
@@ -190,7 +190,7 @@ export function FormCadastroEmpresa() {
 
           {/* Linha 1: Nome */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Nome da Empresa *
             </label>
             <input
@@ -199,8 +199,8 @@ export function FormCadastroEmpresa() {
               value={formData.nome}
               onChange={handleChange}
               placeholder="Tech Solutions"
-              className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                errosValidacao.nome ? 'border-destructive' : 'border-border'
+              className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                errosValidacao.nome ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}
             />
             {errosValidacao.nome && <p className="text-destructive text-sm mt-1">{errosValidacao.nome}</p>}
@@ -209,7 +209,7 @@ export function FormCadastroEmpresa() {
           {/* Linha 2: CNPJ e Area */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label className="block text-sm font-medium text-white mb-1">
                 CNPJ *
               </label>
               <input
@@ -223,8 +223,8 @@ export function FormCadastroEmpresa() {
                 onChange={handleChange}
                 placeholder="00.000.000/0000-00"
                 maxLength={18}
-                className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                  errosValidacao.cnpj ? 'border-destructive' : 'border-border'
+                className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                  errosValidacao.cnpj ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
                 }`}
               />
               {errosValidacao.cnpj && (
@@ -233,14 +233,14 @@ export function FormCadastroEmpresa() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label className="block text-sm font-medium text-white mb-1">
                 Área de Atuação *
               </label>
               <select
                 name="area_atuacao"
                 value={formData.area_atuacao}
                 onChange={handleChange}
-                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground"
+                className="w-full px-4 py-2 bg-[#111633] border border-[#1e2a5e] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 focus:border-[#00D4FF] text-white transition-colors"
               >
                 {areasAtuacao.map((area) => (
                   <option key={area} value={area}>
@@ -253,7 +253,7 @@ export function FormCadastroEmpresa() {
 
           {/* Linha 3: Plano */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Plano *
             </label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -268,19 +268,19 @@ export function FormCadastroEmpresa() {
                     className="sr-only"
                   />
                   <div
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition ${
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                       formData.plano === plano
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
+                        ? 'border-[#00D4FF] bg-[#00D4FF]/10'
+                        : 'border-[#1e2a5e] hover:border-[#00D4FF]/50 bg-[#111633]'
                     }`}
                   >
-                    <div className="font-semibold text-foreground">
+                    <div className="font-semibold text-white">
                       {planosInfo[plano].nome}
                     </div>
-                    <div className="text-sm text-muted-foreground mt-1">
+                    <div className="text-sm text-gray-400 mt-1">
                       R$ {planosInfo[plano].preco === 0 ? 'Customizado' : planosInfo[plano].preco}/mês
                     </div>
-                    <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                    <ul className="text-xs text-gray-500 mt-2 space-y-1">
                       <li>✓ {planosInfo[plano].vagas_limite} vagas</li>
                       <li>✓ {planosInfo[plano].usuarios_limite} usuários</li>
                     </ul>
@@ -292,7 +292,7 @@ export function FormCadastroEmpresa() {
 
           {/* Linha 4: Email Admin */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Email do Administrador *
             </label>
             <input
@@ -301,21 +301,21 @@ export function FormCadastroEmpresa() {
               value={formData.email_admin}
               onChange={handleChange}
               placeholder="admin@empresa.com"
-              className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                errosValidacao.email_admin ? 'border-destructive' : 'border-border'
+              className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                errosValidacao.email_admin ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}
             />
             {errosValidacao.email_admin && (
               <p className="text-destructive text-sm mt-1">{errosValidacao.email_admin}</p>
             )}
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               Este será o login inicial do administrador
             </p>
           </div>
 
           {/* Linha 5: Senha */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Senha *
             </label>
             <input
@@ -324,21 +324,21 @@ export function FormCadastroEmpresa() {
               value={formData.senha_admin}
               onChange={handleChange}
               placeholder="Mínimo 8 caracteres"
-              className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                errosValidacao.senha_admin ? 'border-destructive' : 'border-border'
+              className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                errosValidacao.senha_admin ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}
             />
             {errosValidacao.senha_admin && (
               <p className="text-destructive text-sm mt-1">{errosValidacao.senha_admin}</p>
             )}
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               Deve conter: maiúsculas, minúsculas, números e no mínimo 8 caracteres
             </p>
           </div>
 
           {/* Linha 6: Email de Contato */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Email de Contato (opcional)
             </label>
             <input
@@ -347,8 +347,8 @@ export function FormCadastroEmpresa() {
               value={formData.email_contato}
               onChange={handleChange}
               placeholder="contato@empresa.com"
-              className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                errosValidacao.email_contato ? 'border-destructive' : 'border-border'
+              className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                errosValidacao.email_contato ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}
             />
             {errosValidacao.email_contato && (
@@ -358,7 +358,7 @@ export function FormCadastroEmpresa() {
 
           {/* Linha 7: Telefone */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Telefone (opcional)
             </label>
             <input
@@ -375,8 +375,8 @@ export function FormCadastroEmpresa() {
                 }
               }}
               placeholder="(11) 99999-9999"
-              className={`w-full px-4 py-2 bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground placeholder:text-muted-foreground ${
-                errosValidacao.telefone ? 'border-destructive' : 'border-border'
+              className={`w-full px-4 py-2 bg-[#111633] border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00D4FF]/50 text-white placeholder:text-gray-500 transition-colors ${
+                errosValidacao.telefone ? 'border-red-500' : 'border-[#1e2a5e] focus:border-[#00D4FF]'
               }`}
             />
             {errosValidacao.telefone && (
@@ -396,7 +396,7 @@ export function FormCadastroEmpresa() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="w-56 md:w-72 px-6 py-3 bg-muted text-foreground font-medium rounded-lg hover:bg-muted/80 transition"
+              className="w-56 md:w-72 px-6 py-3 bg-[#111633] border border-[#1e2a5e] text-white font-medium rounded-lg hover:bg-[#1e2a5e]/50 transition-colors"
             >
               Voltar
             </button>
@@ -406,14 +406,14 @@ export function FormCadastroEmpresa() {
 
       {/* Preview do plano selecionado (aparece apenas onde o usuário seleciona) */}
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Detalhes do Plano Selecionado</h2>
-        <div className="bg-card rounded-lg border border-border p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Detalhes do Plano Selecionado</h2>
+        <div className="bg-[#0A0E27] rounded-lg border border-[#1e2a5e] p-6">
           <div className="flex items-start justify-between gap-6">
             <div>
-              <h3 className="font-bold text-2xl text-foreground">{planosInfo[formData.plano].nome}</h3>
-              <p className="text-sm text-muted-foreground mt-2">{planosInfo[formData.plano].descricao}</p>
-              <div className="text-sm text-muted-foreground mt-3">
-                <div>Preço: <span className="font-medium text-foreground">R$ {planosInfo[formData.plano].preco === 0 ? 'Customizado' : planosInfo[formData.plano].preco}/mês</span></div>
+              <h3 className="font-bold text-2xl text-white">{planosInfo[formData.plano].nome}</h3>
+              <p className="text-sm text-gray-400 mt-2">{planosInfo[formData.plano].descricao}</p>
+              <div className="text-sm text-gray-400 mt-3">
+                <div>Preço: <span className="font-medium text-white">R$ {planosInfo[formData.plano].preco === 0 ? 'Customizado' : planosInfo[formData.plano].preco}/mês</span></div>
                 <div className="mt-2">Limites:</div>
                 <ul className="mt-2 space-y-1 text-sm">
                   <li>✓ {planosInfo[formData.plano].vagas_limite} vagas</li>
@@ -422,10 +422,10 @@ export function FormCadastroEmpresa() {
               </div>
             </div>
             <div className="min-w-[220px]">
-              <div className="text-sm text-muted-foreground">Principais recursos</div>
+              <div className="text-sm text-gray-400">Principais recursos</div>
               <ul className="mt-3 space-y-2 text-sm">
                 {planosInfo[formData.plano].features.map((f, i) => (
-                  <li key={i} className="text-muted-foreground">✓ {f}</li>
+                  <li key={i} className="text-gray-400">✓ {f}</li>
                 ))}
               </ul>
             </div>

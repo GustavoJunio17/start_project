@@ -38,7 +38,14 @@ async function handleGET(req: NextRequest) {
 
   const result = await pool.query(query)
 
-  return successResponse(result.rows)
+  const rows = result.rows.map((r) => ({
+    ...r,
+    total_usuarios: parseInt(r.total_usuarios),
+    total_vagas: parseInt(r.total_vagas),
+    total_candidatos: parseInt(r.total_candidatos),
+  }))
+
+  return successResponse(rows)
 }
 
 /**

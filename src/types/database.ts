@@ -1,4 +1,4 @@
-export type Role = 'super_admin' | 'super_gestor' | 'admin' | 'gestor_rh' | 'user_empresa' | 'colaborador' | 'candidato'
+export type Role = 'super_admin' | 'super_gestor' | 'admin' | 'gestor_rh' | 'colaborador' | 'candidato'
 
 export type SegmentoEmpresa = 'Saude' | 'Varejo' | 'Digital' | 'Educacao' | 'Industria' | 'Servicos' | 'Outros'
 
@@ -159,6 +159,7 @@ export interface Colaborador {
   id: string
   user_id: string | null
   empresa_id: string
+  candidato_id: string | null
   nome: string
   cargo: string | null
   email: string | null

@@ -9,6 +9,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
+  try {
   const [
     totaisRes,
     empresasDetalheRes,
@@ -41,18 +42,12 @@ export async function GET() {
         e.plano,
         e.status,
         e.data_cadastro,
-        COUNT(DISTINCT u.id) AS total_usuarios,
-        COUNT(DISTINCT v.id) AS total_vagas,
-        COUNT(DISTINCT v_ab.id) AS vagas_abertas,
-        COUNT(DISTINCT c.id) AS total_candidatos,
-        COUNT(DISTINCT col.id) AS total_colaboradores
+        (SELECT COUNT(*) FROM users u WHERE u.empresa_id = e.id) AS total_usuarios,
+        (SELECT COUNT(*) FROM vagas v WHERE v.empresa_id = e.id) AS total_vagas,
+        (SELECT COUNT(*) FROM vagas v WHERE v.empresa_id = e.id AND v.status = 'aberta') AS vagas_abertas,
+        (SELECT COUNT(*) FROM candidatos c WHERE c.empresa_id = e.id) AS total_candidatos,
+        (SELECT COUNT(*) FROM colaboradores col WHERE col.empresa_id = e.id) AS total_colaboradores
       FROM empresas e
-      LEFT JOIN users u ON u.empresa_id = e.id
-      LEFT JOIN vagas v ON v.empresa_id = e.id
-      LEFT JOIN vagas v_ab ON v_ab.empresa_id = e.id AND v_ab.status = 'aberta'
-      LEFT JOIN candidatos c ON c.empresa_id = e.id
-      LEFT JOIN colaboradores col ON col.empresa_id = e.id
-      GROUP BY e.id, e.nome, e.segmento, e.plano, e.status, e.data_cadastro
       ORDER BY total_candidatos DESC
     `),
     pool.query(`
@@ -168,4 +163,8 @@ export async function GET() {
     },
     atividadeRecente: atividadeRecenteRes.rows,
   })
+  } catch (err) {
+    console.error('[dashboard] Query error:', err)
+    return NextResponse.json({ error: 'Erro ao carregar dados do dashboard' }, { status: 500 })
+  }
 }

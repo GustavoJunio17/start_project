@@ -22,7 +22,7 @@ async function handleGET(req: NextRequest) {
   // Super admins veem todas as vagas
   if (user.role === 'super_admin' || user.role === 'gestor_admin') {
     // Sem filtro, retorna todas
-  } else if (user.role === 'user_empresa' || user.role === 'gestor_rh') {
+  } else if (user.role === 'admin' || user.role === 'gestor_rh') {
     // Admins veem vagas da sua empresa (incluindo rascunhos)
     query += 'empresa_id = $1'
     params.push(user.empresa_id as string)

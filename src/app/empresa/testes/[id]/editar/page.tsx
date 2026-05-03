@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,7 +36,7 @@ export default function TemplateEditarPage() {
         .from('templates_testes')
         .select('*')
         .eq('id', templateId)
-        .eq('empresa_id', user.empresa_id)
+        .eq('empresa_id', user!.empresa_id)
         .single()
 
       if (templateRes.data) {
@@ -171,11 +170,11 @@ export default function TemplateEditarPage() {
         <h1 className="text-2xl font-bold text-foreground">Editar Template</h1>
       </div>
 
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">Informações do Template</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1e2a5e]">
+          <p className="font-semibold text-white">Informações do Template</p>
+        </div>
+        <div className="p-5">
           <div>
             <Label htmlFor="nome" className="text-sm font-medium">
               Nome
@@ -217,16 +216,16 @@ export default function TemplateEditarPage() {
               <Save className="w-4 h-4 mr-2" /> {saving ? 'Salvando...' : 'Salvar'}
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">
+      <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1e2a5e]">
+          <p className="font-semibold text-white">
             Questões ({questoes.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-5">
           <div className="space-y-4">
             {questoes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
@@ -292,23 +291,21 @@ export default function TemplateEditarPage() {
               ))
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Modal de edição de questão */}
       {questaoEditando && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="bg-card border-border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-lg">Editar Questão</CardTitle>
-              <button
-                onClick={() => setQuestaoEditando(null)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
+          <div className="bg-[#0A0E27] border border-[#1e2a5e] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="px-5 py-4 border-b border-[#1e2a5e] flex items-center justify-between">
+              <p className="font-semibold text-white">Editar Questão</p>
+              <button onClick={() => setQuestaoEditando(null)}
+                className="text-gray-500 hover:text-white transition-colors">
                 <X className="w-5 h-5" />
               </button>
-            </CardHeader>
-            <CardContent className="space-y-6">
+            </div>
+            <div className="p-5">
               <div>
                 <Label htmlFor="pergunta-edit" className="text-sm font-medium">
                   Pergunta
@@ -375,8 +372,8 @@ export default function TemplateEditarPage() {
                   <Save className="w-4 h-4 mr-2" /> Salvar
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )}
     </div>
