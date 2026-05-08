@@ -28,7 +28,7 @@ export async function createDefaultDiscTest(client: PoolClient, empresaId: strin
       empresaId,
       templateName,
       'Teste DISC padrão com 20 questões - 5 por dimensão (D, I, S, C)',
-      JSON.stringify(questionIds),
+      questionIds,
     ],
   )
 

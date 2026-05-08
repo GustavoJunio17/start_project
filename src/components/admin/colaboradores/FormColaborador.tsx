@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-
+import { toast } from "sonner"
 import { createClient } from "@/lib/db/client"
 import { useCargosEDepartamentos } from "@/hooks/useCargosEDepartamentos"
 import type { Colaborador, StatusColaborador, OrigemColaborador, Empresa, EscolaridadeColaborador } from "@/types/database"
@@ -66,8 +66,10 @@ function gerarSenha(nome: string): string {
 export function FormColaborador({ colaborador, empresas, onClose, onSaved, userRole, userId }: FormColaboradorProps) {
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
-  const empresaId = colaborador?.empresa_id || (empresas.length > 0 ? empresas[0].id : '')
-  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(empresaId, userRole, userId)
+  const isSuperRole = userRole === 'super_admin' || userRole === 'super_gestor'
+  const empresaId = colaborador?.empresa_id || (isSuperRole ? '' : (empresas.length > 0 ? empresas[0].id : ''))
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState(empresaId)
+  const { cargos, departamentos, loading: cargosDeptLoading } = useCargosEDepartamentos(selectedEmpresaId, userRole, userId)
 
   const [formData, setFormData] = useState({
     nome: colaborador?.nome || '',
@@ -162,7 +164,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
         const data = await res.json()
 
         if (!res.ok) {
-          alert(data.error || 'Erro ao criar colaborador')
+          toast.error(data.error || 'Erro ao criar colaborador')
           return
         }
 
@@ -205,7 +207,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
       }
       onSaved()
     } catch (error: any) {
-      alert('Erro ao salvar colaborador: ' + error.message)
+      toast.error('Erro ao salvar colaborador: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -307,6 +309,30 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
                   <h3 className="text-sm font-semibold text-white">Vínculo Profissional</h3>
                 </div>
                 <div className="p-4 space-y-4">
+                  {isSuperRole && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-400">Empresa</label>
+                      <div className="relative">
+                        <select
+                          value={formData.empresa_id}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setFormData(f => ({...f, empresa_id: val, departamento: '', cargo: ''}))
+                            setSelectedEmpresaId(val)
+                          }}
+                          className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="" disabled className="text-gray-500">Selecione uma empresa</option>
+                          {empresas.map(emp => (
+                            <option key={emp.id} value={emp.id} className="text-white">{emp.nome}</option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-gray-400">
@@ -401,26 +427,6 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
                       </div>
                     </div>
 
-                    {empresas.length > 1 && (
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-400">Empresa</label>
-                        <div className="relative">
-                          <select
-                            value={formData.empresa_id}
-                            onChange={(e) => setFormData(f => ({...f, empresa_id: e.target.value}))}
-                            className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all appearance-none cursor-pointer"
-                          >
-                            <option value="" disabled className="text-gray-500">Selecione uma empresa</option>
-                            {empresas.map(emp => (
-                              <option key={emp.id} value={emp.id} className="text-white">{emp.nome}</option>
-                            ))}
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>

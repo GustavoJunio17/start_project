@@ -6,10 +6,12 @@ import { MoreHorizontal, Edit, Trash, Plus, Search, Building2, Mail, Phone, Brie
 import type { Colaborador, Empresa, TemplateTeste } from "@/types/database"
 import { FormColaborador } from "./FormColaborador"
 import { Pagination } from "@/components/ui/pagination"
+import { useAuth } from "@/hooks/useAuth"
 
 const ITEMS_PER_PAGE = 20
 
 export function ListarColaboradores() {
+  const { user } = useAuth()
   const [colaboradores, setColaboradores] = useState<(Colaborador & { empresa: { nome: string } })[]>([])
   const [empresas, setEmpresas] = useState<Pick<Empresa, 'id' | 'nome'>[]>([])
   const [loading, setLoading] = useState(true)
@@ -265,6 +267,8 @@ export function ListarColaboradores() {
           empresas={empresas}
           onClose={() => setIsFormOpen(false)}
           onSaved={() => { setIsFormOpen(false); fetchData(); }}
+          userRole={user?.role}
+          userId={user?.id}
         />
       )}
 

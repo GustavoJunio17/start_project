@@ -32,9 +32,9 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
     return errorResponse('Nome é obrigatório', 400)
   }
 
-  const targetEmpresaId = empresa_id || user.empresa_id
+  const targetEmpresaId = (empresa_id && empresa_id.trim()) || user.empresa_id
   if (!targetEmpresaId) {
-    return errorResponse('Empresa não identificada', 400)
+    return errorResponse('Selecione uma empresa para o colaborador', 400)
   }
 
   const client = await pool.connect()
