@@ -166,7 +166,11 @@ export default function CandidatosPage() {
 
   useEffect(() => {
     if (isTestModalOpen && candidaturaForTest?.id) {
-      fetch(`/api/testes/links?candidatura_id=${candidaturaForTest.id}`)
+      const isCandidatoDireto = !!(candidaturaForTest as any)._candidato_only
+      const param = isCandidatoDireto
+        ? `candidato_id=${candidaturaForTest.id}`
+        : `candidatura_id=${candidaturaForTest.id}`
+      fetch(`/api/testes/links?${param}`)
         .then(r => r.json()).then(setTesteLinksExistentes).catch(() => {})
     }
   }, [isTestModalOpen, candidaturaForTest?.id])
@@ -774,17 +778,23 @@ export default function CandidatosPage() {
                     disabled={!selectedTemplate}
                     onClick={async () => {
                       if (!candidaturaForTest || !selectedTemplate) return
+                      const isCandidatoDireto = !!(candidaturaForTest as any)._candidato_only
+                      const body = isCandidatoDireto
+                        ? { candidato_id: candidaturaForTest.id, template_id: selectedTemplate }
+                        : { candidatura_id: candidaturaForTest.id, template_id: selectedTemplate }
                       const res = await fetch('/api/testes/gerar-link', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ candidatura_id: candidaturaForTest.id, template_id: selectedTemplate }),
+                        body: JSON.stringify(body),
                       })
                       if (res.ok) {
                         const data = await res.json()
                         setTestLink(data.link)
                         setShowTestLink(true)
-                        // Refresh list
-                        fetch(`/api/testes/links?candidatura_id=${candidaturaForTest.id}`)
+                        const param = isCandidatoDireto
+                          ? `candidato_id=${candidaturaForTest.id}`
+                          : `candidatura_id=${candidaturaForTest.id}`
+                        fetch(`/api/testes/links?${param}`)
                           .then(r => r.json()).then(setTesteLinksExistentes).catch(() => {})
                       }
                     }}
@@ -1346,6 +1356,7 @@ export default function CandidatosPage() {
                     id: candidatoAvaliadoForAction.id,
                     nome: candidatoAvaliadoForAction.nome_completo,
                     email: candidatoAvaliadoForAction.email,
+                    _candidato_only: true,
                   } as any)
                   setIsAvaliadoActionsOpen(false)
                   setIsTestModalOpen(true)

@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Progress } from '@/components/ui/progress'
 import { DISCBars } from '@/components/disc/DISCChart'
 import type { QuestaoDisc, Candidato, TipoTeste, PerfilDISC } from '@/types/database'
-import { ClipboardList, Play, CheckCircle, Clock } from 'lucide-react'
+import { ClipboardList, Play, CheckCircle, Clock, Link2, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_DISC_QUESTIONS: Omit<QuestaoDisc, 'id' | 'empresa_id' | 'vaga_id'>[] = [
@@ -41,13 +41,19 @@ export default function CandidatoTestesPage() {
   const [resultado, setResultado] = useState<PerfilDISC | null>(null)
   const [startTime, setStartTime] = useState<number>(0)
   const [loading, setLoading] = useState(true)
+  const [linksEnviados, setLinksEnviados] = useState<{ id: string; token: string; respondido: boolean; template_nome: string; empresa_nome: string; created_at: string; expires_at: string }[]>([])
   const supabase = createClient()
 
   useEffect(() => {
     if (!user) return
     async function load() {
-      const { data } = await supabase.from('candidatos').select('*, vaga:vagas(titulo, perfil_disc_ideal), empresa:empresas(nome)').eq('user_id', user!.id)
-      setCandidaturas(data || []); setLoading(false)
+      const [candRes, linksRes] = await Promise.all([
+        supabase.from('candidatos').select('*, vaga:vagas(titulo, perfil_disc_ideal), empresa:empresas(nome)').eq('user_id', user!.id),
+        fetch('/api/testes/meus-links').then(r => r.ok ? r.json() : []),
+      ])
+      setCandidaturas(candRes.data || [])
+      setLinksEnviados(linksRes)
+      setLoading(false)
     }
     load()
   }, [user])
@@ -106,6 +112,39 @@ export default function CandidatoTestesPage() {
           </h1>
           <p className="text-gray-400 text-sm mt-1">Realize os testes necessários para as vagas que você se candidatou.</p>
         </div>
+
+        {linksEnviados.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-[#00D4FF] uppercase tracking-wider flex items-center gap-2">
+              <Link2 className="w-4 h-4" /> Testes Enviados pela Empresa
+            </p>
+            <div className="grid gap-3">
+              {linksEnviados.map((link) => (
+                <div key={link.id} className="glass-card p-5 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-semibold text-white">{link.template_nome}</p>
+                    <p className="text-sm text-gray-500">{link.empresa_nome} · {new Date(link.created_at).toLocaleDateString('pt-BR')}</p>
+                  </div>
+                  {link.respondido ? (
+                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <CheckCircle className="w-3.5 h-3.5" /> Respondido
+                    </span>
+                  ) : (
+                    <a
+                      href={`/testes/responder/${link.token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-all"
+                    >
+                      <Play className="w-3.5 h-3.5" /> Responder
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {candidaturas.length === 0 ? (
           <div className="glass-card py-20 text-center border-dashed">

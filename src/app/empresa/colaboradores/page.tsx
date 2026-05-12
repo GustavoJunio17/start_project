@@ -13,7 +13,16 @@ import { DISCBars } from '@/components/disc/DISCChart'
 import { Pagination } from '@/components/ui/pagination'
 import { FormColaborador } from '@/components/admin/colaboradores/FormColaborador'
 import type { Colaborador, StatusColaborador } from '@/types/database'
-import { Search, Plus, Upload, MoreHorizontal, Edit, Trash } from 'lucide-react'
+import { Search, Plus, MoreHorizontal, Edit, Trash, FileCheck } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import type { TemplateTeste } from '@/types/database'
+import { toast, Toaster } from 'sonner'
 
 const supabase = createClient()
 
@@ -47,6 +56,10 @@ export default function ColaboradoresPage() {
   const [page, setPage] = useState(1)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [colabToEdit, setColabToEdit] = useState<Colaborador | null>(null)
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false)
+  const [selectedColabForTest, setSelectedColabForTest] = useState<Colaborador | null>(null)
+  const [templates, setTemplates] = useState<TemplateTeste[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
 
   const fetchData = async () => {
     if (!user?.empresa_id) return
@@ -64,30 +77,41 @@ export default function ColaboradoresPage() {
     fetchData()
   }
 
-  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !user?.empresa_id) return
-    const text = await file.text()
-    const lines = text.split('\n').filter(l => l.trim())
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
-    const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim())
-      const row: Record<string, string> = {}
-      headers.forEach((h, i) => { row[h] = values[i] || '' })
-      return row
-    })
-    for (const row of rows) {
-      await supabase.from('colaboradores').insert({
-        empresa_id: user.empresa_id,
-        nome: row.nome || row.name || '',
-        cargo: row.cargo || row.position || '',
-        email: row.email || '',
-        origem: 'importacao_planilha',
-        data_contratacao: new Date().toISOString().split('T')[0],
-        proxima_reavaliacao: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      })
+  const openTestModal = async (colaborador: Colaborador) => {
+    setSelectedColabForTest(colaborador)
+    setIsTestModalOpen(true)
+    setTemplatesLoading(true)
+    try {
+      const res = await fetch('/api/empresa/templates')
+      if (res.ok) {
+        setTemplates(await res.json())
+      }
+    } catch (err) {
+      toast.error('Erro ao carregar templates')
+    } finally {
+      setTemplatesLoading(false)
     }
-    fetchData()
+  }
+
+  const applyTest = async (templateId: string) => {
+    if (!selectedColabForTest) return
+    try {
+      const res = await fetch(`/api/colaboradores/${selectedColabForTest.id}/gerar-teste`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_id: templateId }),
+      })
+      if (!res.ok) {
+        toast.error('Erro ao gerar teste')
+        return
+      }
+      const { link } = await res.json()
+      toast.success('Teste aplicado com sucesso!')
+      setIsTestModalOpen(false)
+      setSelectedColabForTest(null)
+    } catch (err) {
+      toast.error('Erro ao aplicar teste')
+    }
   }
 
   const filtered = colaboradores.filter(c => {
@@ -106,26 +130,20 @@ export default function ColaboradoresPage() {
   const empresaAtual = user ? [{ id: user.empresa_id!, nome: user.empresa_nome! }] : []
 
   return (
-    <div className="space-y-6">
+    <>
+      <Toaster />
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Colaboradores</h1>
           <p className="text-muted-foreground">{colaboradores.length} colaboradores</p>
         </div>
-        <div className="flex gap-2">
-          <label className="cursor-pointer">
-            <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
-            <Button variant="outline" className="border-border">
-              <Upload className="w-4 h-4 mr-2" /> Importar CSV
-            </Button>
-          </label>
-          <Button
-            className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
-            onClick={() => { setColabToEdit(null); setIsFormOpen(true) }}
-          >
-            <Plus className="w-4 h-4 mr-2" /> Novo
-          </Button>
-        </div>
+        <Button
+          className="bg-gradient-to-r from-[#00D4FF] to-[#0066FF]"
+          onClick={() => { setColabToEdit(null); setIsFormOpen(true) }}
+        >
+          <Plus className="w-4 h-4 mr-2" /> Novo
+        </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -218,6 +236,9 @@ export default function ColaboradoresPage() {
                       <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openTestModal(c)}>
+                        <FileCheck className="mr-2 h-4 w-4" /> Aplicar Teste DISC
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { setColabToEdit(c); setIsFormOpen(true) }}>
                         <Edit className="mr-2 h-4 w-4" /> Editar
                       </DropdownMenuItem>
@@ -243,6 +264,37 @@ export default function ColaboradoresPage() {
         />
       </div>
 
+      <Dialog open={isTestModalOpen} onOpenChange={setIsTestModalOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Aplicar Teste DISC</DialogTitle>
+            <DialogDescription>
+              Selecione um template de teste para {selectedColabForTest?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {templatesLoading ? (
+              <p className="text-sm text-muted-foreground py-4">Carregando templates...</p>
+            ) : templates.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Nenhum template disponível</p>
+            ) : (
+              templates.map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => applyTest(template.id)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
+                >
+                  <p className="font-medium text-foreground">{template.nome}</p>
+                  {template.descricao && (
+                    <p className="text-xs text-muted-foreground mt-1">{template.descricao}</p>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {isFormOpen && (
         <FormColaborador
           colaborador={colabToEdit}
@@ -253,6 +305,7 @@ export default function ColaboradoresPage() {
           userId={user?.id}
         />
       )}
-    </div>
+      </div>
+    </>
   )
 }

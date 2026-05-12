@@ -8,10 +8,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     `SELECT * FROM (
        SELECT tl.id, tl.respondido, tl.expires_at,
               tt.nome AS template_nome, tt.questoes_ids,
-              c.nome AS nome, 'candidato' AS tipo
+              COALESCE(c.nome, cand.nome_completo) AS nome, 'candidato' AS tipo
        FROM teste_links tl
        JOIN templates_testes tt ON tt.id = tl.template_id
-       JOIN candidaturas c ON c.id = tl.candidatura_id
+       LEFT JOIN candidaturas c ON c.id = tl.candidatura_id
+       LEFT JOIN candidatos cand ON cand.id = tl.candidato_id
        WHERE tl.token = $1
        UNION ALL
        SELECT ctl.id, ctl.respondido, ctl.expires_at,

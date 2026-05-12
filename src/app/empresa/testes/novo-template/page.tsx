@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/db/client'
 import { useAuth } from '@/hooks/useAuth'
 
 import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
@@ -15,7 +14,6 @@ export default function NovoTemplatePage() {
   const [templateForm, setTemplateForm] = useState({ nome: '', descricao: '' })
   const [templateQuestoes, setTemplateQuestoes] = useState<{ pergunta: string; opcao_d: string; opcao_i: string; opcao_s: string; opcao_c: string }[]>([])
   const [newQuestion, setNewQuestion] = useState({ pergunta: '', opcao_d: '', opcao_i: '', opcao_s: '', opcao_c: '' })
-  const supabase = createClient()
 
   const handleAddQuestionToTemplate = () => {
     if (!newQuestion.pergunta.trim()) {
@@ -50,45 +48,32 @@ export default function NovoTemplatePage() {
     }
 
     setSaving(true)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
     try {
-      const { data: insertedTemplates, error: templateError } = await (supabase
-        .from('templates_testes')
-        .insert({
-          empresa_id: user!.empresa_id,
+      const res = await fetch('/api/empresa/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           nome: templateForm.nome,
           descricao: templateForm.descricao || null,
-          questoes_ids: Array(templateQuestoes.length).fill('') as string[],
-        }) as any)
-        .select()
+          questoes: templateQuestoes,
+        }),
+        signal: controller.signal,
+      })
 
-      if (templateError || !insertedTemplates || insertedTemplates.length === 0) {
-        throw new Error(templateError?.message || 'Erro ao criar template')
-      }
-
-      const templateData = insertedTemplates[0]
-
-      const questoesInsert = templateQuestoes.map((q) => ({
-        empresa_id: user.empresa_id,
-        template_testes_id: templateData.id,
-        pergunta: q.pergunta,
-        opcoes: [
-          { texto: q.opcao_d, dimensao: 'D' as const },
-          { texto: q.opcao_i, dimensao: 'I' as const },
-          { texto: q.opcao_s, dimensao: 'S' as const },
-          { texto: q.opcao_c, dimensao: 'C' as const },
-        ],
-      }))
-
-      const { error: questoesError } = await supabase.from('questoes_disc').insert(questoesInsert)
-
-      if (questoesError) {
-        throw new Error(questoesError.message)
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Erro ao criar template')
       }
 
       toast.success('Template criado com sucesso!')
       router.push('/empresa/testes')
     } catch (error: any) {
-      toast.error('Erro ao criar template: ' + error.message)
+      const msg = error.name === 'AbortError' ? 'Tempo limite esgotado. Tente novamente.' : error.message
+      toast.error('Erro ao criar template: ' + msg)
+    } finally {
+      clearTimeout(timeout)
       setSaving(false)
     }
   }
