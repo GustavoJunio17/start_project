@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Pagination } from '@/components/ui/pagination'
 import type { Vaga, StatusVaga } from '@/types/database'
-import { Plus, Briefcase, CheckCircle, Edit, Trash, FileText, ListChecks, Zap, Award, DollarSign, Users, Calendar, Layers, Link2, Check } from 'lucide-react'
+import { Plus, Briefcase, CheckCircle, Edit, Trash, FileText, ListChecks, Zap, Award, DollarSign, Users, Calendar, Layers, Link2, Check, Search, X } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -22,6 +22,14 @@ const STATUS_COLORS: Record<StatusVaga, string> = {
   encerrada: 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20',
 }
 
+const STATUS_FILTER_LABELS: Record<string, string> = {
+  todos: 'Todas',
+  aberta: 'Abertas',
+  pausada: 'Pausadas',
+  encerrada: 'Encerradas',
+  rascunho: 'Rascunhos',
+}
+
 export default function VagasPage() {
   const { user } = useAuth()
   const [vagas, setVagas] = useState<Vaga[]>([])
@@ -33,6 +41,9 @@ export default function VagasPage() {
   const [vagaToDelete, setVagaToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState<string>('todos')
+  const [filterDepto, setFilterDepto] = useState<string>('todos')
 
   const copyLink = (e: React.MouseEvent, vagaId: string) => {
     e.stopPropagation()
@@ -104,26 +115,106 @@ export default function VagasPage() {
   }
 
 
-  const totalPages = Math.ceil(vagas.length / ITEMS_PER_PAGE)
-  const paginated = vagas.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const deptos = Array.from(new Set(vagas.map(v => v.departamento).filter(Boolean))) as string[]
+
+  const filtered = vagas.filter(v => {
+    const matchSearch = !search || v.titulo.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = filterStatus === 'todos' || v.status === filterStatus
+    const matchDepto = filterDepto === 'todos' || v.departamento === filterDepto
+    return matchSearch && matchStatus && matchDepto
+  })
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+
+  const clearFilters = () => { setSearch(''); setFilterStatus('todos'); setFilterDepto('todos'); setPage(1) }
+  const hasActiveFilters = search || filterStatus !== 'todos' || filterDepto !== 'todos'
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Vagas</h1>
-        <p className="text-gray-400 text-sm mt-1">{vagas.length} vagas cadastradas</p>
-      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Vagas</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            {filtered.length !== vagas.length ? `${filtered.length} de ${vagas.length}` : vagas.length} vagas
+          </p>
+        </div>
         <Link href="/empresa/vagas/nova">
           <button className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white rounded-lg font-semibold text-sm hover:opacity-90 hover:-translate-y-0.5 transition-all">
             <Plus className="w-4 h-4" /> Nova Vaga
           </button>
         </Link>
+      </div>
+
+      {/* Filtros */}
+      <div className="space-y-3">
+        <div className="flex gap-3 flex-wrap items-center">
+          {/* Busca */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Buscar por título..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              className="w-full pl-9 pr-4 py-2 bg-[#111633] border border-[#1e2a5e] rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF]/50 transition-colors"
+            />
+          </div>
+
+          {/* Filtro Departamento */}
+          {deptos.length > 0 && (
+            <Select value={filterDepto} onValueChange={v => { setFilterDepto(v); setPage(1) }}>
+              <SelectTrigger className="w-[180px] bg-[#111633] border-[#1e2a5e] text-sm text-white">
+                <SelectValue placeholder="Departamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos departamentos</SelectItem>
+                {deptos.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Limpar filtros */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-400 hover:text-white border border-[#1e2a5e] rounded-lg hover:border-[#00D4FF]/30 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" /> Limpar
+            </button>
+          )}
+        </div>
+
+        {/* Pills de status */}
+        <div className="flex gap-2 flex-wrap">
+          {Object.entries(STATUS_FILTER_LABELS).map(([key, label]) => {
+            const count = key === 'todos' ? vagas.length : vagas.filter(v => v.status === key).length
+            const active = filterStatus === key
+            return (
+              <button
+                key={key}
+                onClick={() => { setFilterStatus(key); setPage(1) }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                  active
+                    ? 'bg-[#00D4FF]/15 text-[#00D4FF] border-[#00D4FF]/40'
+                    : 'bg-transparent text-gray-400 border-[#1e2a5e] hover:border-[#00D4FF]/20 hover:text-gray-300'
+                }`}
+              >
+                {label} <span className={`ml-1 ${active ? 'text-[#00D4FF]/70' : 'text-gray-600'}`}>({count})</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? (
           <p className="text-gray-500 col-span-full text-center py-8">Carregando...</p>
-        ) : vagas.length === 0 ? (
-          <p className="text-gray-500 col-span-full text-center py-8">Nenhuma vaga cadastrada ainda.</p>
+        ) : filtered.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-gray-500">Nenhuma vaga encontrada</p>
+            {hasActiveFilters && <button onClick={clearFilters} className="mt-2 text-sm text-[#00D4FF] hover:underline">Limpar filtros</button>}
+          </div>
         ) : paginated.map(vaga => (
           <div
             key={vaga.id}
@@ -172,7 +263,7 @@ export default function VagasPage() {
       <Pagination
         currentPage={page}
         totalPages={totalPages}
-        totalItems={vagas.length}
+        totalItems={filtered.length}
         itemsPerPage={ITEMS_PER_PAGE}
         onPageChange={setPage}
       />
