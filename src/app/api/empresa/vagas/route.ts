@@ -9,6 +9,19 @@ export async function GET(request: NextRequest) {
   if (!user.empresa_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
+    const fechadas = await pool.query(`
+      UPDATE vagas
+      SET status = 'encerrada'
+      WHERE empresa_id = $1
+        AND status IN ('aberta', 'pausada')
+        AND data_limite IS NOT NULL
+        AND data_limite <= CURRENT_DATE
+      RETURNING id, titulo, data_limite, status
+    `, [user.empresa_id])
+    if (fechadas.rowCount && fechadas.rowCount > 0) {
+      console.log('[vagas] Vagas encerradas automaticamente:', fechadas.rows)
+    }
+
     const db = createServerClient()
 
     // Se for gestor_rh, buscar apenas seus setores
