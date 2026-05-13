@@ -114,9 +114,23 @@ export default function ResponderTestePage({ params }: { params: Promise<{ token
               Suas respostas foram registradas com sucesso.
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            O resultado será analisado pela empresa e você será notificado em breve.
-          </p>
+          {tipoParticipante === 'colaborador' ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Seu perfil DISC foi atualizado. Acesse a plataforma para ver seus resultados.
+              </p>
+              <a
+                href="/auth/login"
+                className="inline-flex items-center justify-center gap-2 w-full py-3 px-6 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                Acessar minha área
+              </a>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              O resultado será analisado pela empresa e você será notificado em breve.
+            </p>
+          )}
         </div>
       </div>
     )

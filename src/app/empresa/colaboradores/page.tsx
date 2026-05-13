@@ -13,16 +13,19 @@ import { DISCBars } from '@/components/disc/DISCChart'
 import { Pagination } from '@/components/ui/pagination'
 import { FormColaborador } from '@/components/admin/colaboradores/FormColaborador'
 import type { Colaborador, StatusColaborador } from '@/types/database'
-import { Search, Plus, MoreHorizontal, Edit, Trash, FileCheck } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Search, Plus, MoreHorizontal, Edit, Trash, FileCheck, Copy, CheckCheck, ExternalLink, X } from 'lucide-react'
 import type { TemplateTeste } from '@/types/database'
 import { toast, Toaster } from 'sonner'
+
+interface TesteLink {
+  id: string
+  token: string
+  respondido: boolean
+  resultado: { D: number; I: number; S: number; C: number } | null
+  created_at: string
+  expires_at: string
+  template_nome: string
+}
 
 const supabase = createClient()
 
@@ -60,6 +63,13 @@ export default function ColaboradoresPage() {
   const [selectedColabForTest, setSelectedColabForTest] = useState<Colaborador | null>(null)
   const [templates, setTemplates] = useState<TemplateTeste[]>([])
   const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [gerandoLink, setGerandoLink] = useState(false)
+  const [linkGerado, setLinkGerado] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const [modalTab, setModalTab] = useState<'novo' | 'historico'>('novo')
+  const [historico, setHistorico] = useState<TesteLink[]>([])
+  const [historicoLoading, setHistoricoLoading] = useState(false)
 
   const fetchData = async () => {
     if (!user?.empresa_id) return
@@ -79,39 +89,67 @@ export default function ColaboradoresPage() {
 
   const openTestModal = async (colaborador: Colaborador) => {
     setSelectedColabForTest(colaborador)
+    setSelectedTemplateId('')
+    setLinkGerado(null)
+    setCopiado(false)
+    setModalTab('novo')
+    setHistorico([])
     setIsTestModalOpen(true)
+
+    const [templatesRes] = await Promise.all([
+      fetch('/api/empresa/templates'),
+      carregarHistorico(colaborador.id),
+    ])
     setTemplatesLoading(true)
     try {
-      const res = await fetch('/api/empresa/templates')
-      if (res.ok) {
-        setTemplates(await res.json())
-      }
-    } catch (err) {
+      if (templatesRes.ok) setTemplates(await templatesRes.json())
+    } catch {
       toast.error('Erro ao carregar templates')
     } finally {
       setTemplatesLoading(false)
     }
   }
 
-  const applyTest = async (templateId: string) => {
-    if (!selectedColabForTest) return
+  const carregarHistorico = async (colaboradorId: string) => {
+    setHistoricoLoading(true)
+    try {
+      const res = await fetch(`/api/colaboradores/${colaboradorId}/testes`)
+      if (res.ok) setHistorico(await res.json())
+    } catch {
+      // silently ignore
+    } finally {
+      setHistoricoLoading(false)
+    }
+  }
+
+  const gerarLink = async () => {
+    if (!selectedColabForTest || !selectedTemplateId) return
+    setGerandoLink(true)
     try {
       const res = await fetch(`/api/colaboradores/${selectedColabForTest.id}/gerar-teste`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template_id: templateId }),
+        body: JSON.stringify({ template_id: selectedTemplateId }),
       })
+      const data = await res.json()
       if (!res.ok) {
-        toast.error('Erro ao gerar teste')
+        toast.error(data.error || 'Erro ao gerar link')
         return
       }
-      const { link } = await res.json()
-      toast.success('Teste aplicado com sucesso!')
-      setIsTestModalOpen(false)
-      setSelectedColabForTest(null)
-    } catch (err) {
-      toast.error('Erro ao aplicar teste')
+      setLinkGerado(data.link)
+      carregarHistorico(selectedColabForTest.id)
+    } catch {
+      toast.error('Erro ao gerar link')
+    } finally {
+      setGerandoLink(false)
     }
+  }
+
+  const copiarLink = () => {
+    if (!linkGerado) return
+    navigator.clipboard.writeText(linkGerado)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
   }
 
   const filtered = colaboradores.filter(c => {
@@ -264,36 +302,199 @@ export default function ColaboradoresPage() {
         />
       </div>
 
-      <Dialog open={isTestModalOpen} onOpenChange={setIsTestModalOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Aplicar Teste DISC</DialogTitle>
-            <DialogDescription>
-              Selecione um template de teste para {selectedColabForTest?.nome}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {templatesLoading ? (
-              <p className="text-sm text-muted-foreground py-4">Carregando templates...</p>
-            ) : templates.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">Nenhum template disponível</p>
-            ) : (
-              templates.map(template => (
-                <button
-                  key={template.id}
-                  onClick={() => applyTest(template.id)}
-                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-accent transition-colors"
-                >
-                  <p className="font-medium text-foreground">{template.nome}</p>
-                  {template.descricao && (
-                    <p className="text-xs text-muted-foreground mt-1">{template.descricao}</p>
+      {isTestModalOpen && selectedColabForTest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#0A0E27] border border-[#1e2a5e] rounded-xl shadow-2xl w-full max-w-[460px] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex justify-between items-center px-5 py-4 border-b border-[#1e2a5e]">
+              <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                <FileCheck className="h-4 w-4 text-[#00D4FF]" />
+                Aplicar Teste DISC
+              </h2>
+              <button
+                onClick={() => { setIsTestModalOpen(false); setLinkGerado(null); setSelectedTemplateId('') }}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-[#1e2a5e]">
+              <button
+                onClick={() => setModalTab('novo')}
+                className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
+                  modalTab === 'novo'
+                    ? 'text-[#00D4FF] border-b-2 border-[#00D4FF]'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Novo Teste
+              </button>
+              <button
+                onClick={() => setModalTab('historico')}
+                className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 ${
+                  modalTab === 'historico'
+                    ? 'text-[#00D4FF] border-b-2 border-[#00D4FF]'
+                    : 'text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                Histórico
+                {historico.length > 0 && (
+                  <span className="bg-[#1e2a5e] text-gray-300 text-[10px] rounded-full px-1.5 py-0.5 leading-none">
+                    {historico.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Colaborador info */}
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#111633] border border-[#1e2a5e]">
+                <div className="w-8 h-8 rounded-full bg-[#1e2a5e] flex items-center justify-center shrink-0 text-xs font-bold text-gray-300 uppercase">
+                  {selectedColabForTest.nome.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm text-white truncate">{selectedColabForTest.nome}</p>
+                  <p className="text-xs text-gray-400">{selectedColabForTest.cargo || 'Sem cargo'}</p>
+                </div>
+              </div>
+
+              {modalTab === 'novo' ? (
+                <>
+                  {!linkGerado ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-white mb-2">Selecione o template</p>
+                        {templatesLoading ? (
+                          <p className="text-sm text-gray-400 py-3">Carregando templates...</p>
+                        ) : templates.length === 0 ? (
+                          <p className="text-sm text-gray-400 py-3">
+                            Nenhum template cadastrado. Crie um em <strong className="text-white">Testes</strong>.
+                          </p>
+                        ) : (
+                          <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                            {templates.map(t => (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setSelectedTemplateId(t.id)}
+                                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-all text-sm ${
+                                  selectedTemplateId === t.id
+                                    ? 'border-[#00D4FF] bg-[#00D4FF]/10'
+                                    : 'border-[#1e2a5e] bg-[#111633] hover:border-[#2a3a7e] hover:bg-[#151d40]'
+                                }`}
+                              >
+                                <p className="font-medium text-white">{t.nome}</p>
+                                {t.descricao && (
+                                  <p className="text-xs text-gray-400 mt-0.5">{t.descricao}</p>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        disabled={!selectedTemplateId || gerandoLink}
+                        onClick={gerarLink}
+                        className={`w-full py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                          !selectedTemplateId || gerandoLink
+                            ? 'bg-[#1e2a5e] text-gray-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-[#00D4FF] to-[#0066FF] text-white hover:opacity-90'
+                        }`}
+                      >
+                        {gerandoLink ? 'Gerando...' : 'Gerar Link do Teste'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="px-3 py-2.5 rounded-lg bg-[#10B981]/10 border border-[#10B981]/30 text-sm text-[#10B981]">
+                        Link gerado! Compartilhe com <strong className="text-white">{selectedColabForTest.nome}</strong>.
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-gray-400">Link do teste</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 min-w-0 bg-[#111633] rounded-lg px-3 py-2 text-xs font-mono truncate text-gray-300 border border-[#1e2a5e]">
+                            {linkGerado}
+                          </div>
+                          <button onClick={copiarLink} className="p-2 border border-[#1e2a5e] text-gray-400 rounded-lg hover:bg-[#1e2a5e] hover:text-white transition-colors shrink-0" title="Copiar link">
+                            {copiado ? <CheckCheck className="h-4 w-4 text-[#10B981]" /> : <Copy className="h-4 w-4" />}
+                          </button>
+                          <button onClick={() => window.open(linkGerado, '_blank', 'noopener,noreferrer')} className="p-2 border border-[#1e2a5e] text-gray-400 rounded-lg hover:bg-[#1e2a5e] hover:text-white transition-colors shrink-0" title="Abrir link">
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        className="w-full text-sm text-gray-400 border border-[#1e2a5e] rounded-lg py-2.5 hover:bg-[#1e2a5e] hover:text-white transition-all"
+                        onClick={() => { setLinkGerado(null); setSelectedTemplateId('') }}
+                      >
+                        Gerar novo link
+                      </button>
+                    </>
                   )}
-                </button>
-              ))
-            )}
+                </>
+              ) : (
+                /* Histórico */
+                <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                  {historicoLoading ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Carregando histórico...</p>
+                  ) : historico.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Nenhum teste aplicado ainda.</p>
+                  ) : historico.map(item => {
+                    const expirado = new Date(item.expires_at) < new Date()
+                    const status = item.respondido ? 'respondido' : expirado ? 'expirado' : 'pendente'
+                    const statusColors = {
+                      respondido: 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20',
+                      pendente: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20',
+                      expirado: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+                    }
+                    const statusLabel = { respondido: 'Respondido', pendente: 'Pendente', expirado: 'Expirado' }
+                    return (
+                      <div key={item.id} className="flex items-start justify-between gap-3 px-3 py-3 rounded-lg bg-[#111633] border border-[#1e2a5e]">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm text-white truncate">{item.template_nome}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {new Date(item.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {item.resultado && (
+                            <div className="flex gap-2 mt-1.5">
+                              {(['D','I','S','C'] as const).map(d => (
+                                <span key={d} className="text-[10px] font-bold text-gray-400">
+                                  {d}<span className="text-white ml-0.5">{item.resultado![d]}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusColors[status]}`}>
+                            {statusLabel[status]}
+                          </span>
+                          {!item.respondido && !expirado && (
+                            <button
+                              onClick={() => {
+                                const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+                                navigator.clipboard.writeText(`${base}/testes/responder/${item.token}`)
+                                toast.success('Link copiado!')
+                              }}
+                              className="p-1 text-gray-500 hover:text-[#00D4FF] transition-colors"
+                              title="Copiar link"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
 
       {isFormOpen && (
         <FormColaborador
