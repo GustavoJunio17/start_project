@@ -12,7 +12,6 @@ import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Search, Download, CheckCircle, ThumbsDown, Star, MoreVertical, X, Link2, Copy, Eye, EyeOff, RefreshCw, UserCheck } from 'lucide-react'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { toast, Toaster } from 'sonner'
 import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
 import { DISCBars } from '@/components/disc/DISCChart'
@@ -82,7 +81,27 @@ export default function CandidatosPage() {
     email_conta: '',
     senha_conta: '',
   })
-  const [showSenhaConta, setShowSenhaConta] = useState(false)
+  const [showSenhaConta, setShowSenhaConta] = useState(true)
+
+  function gerarSenhaColaborador(): string {
+    const maiusculas = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+    const minusculas = 'abcdefghijkmnpqrstuvwxyz'
+    const numeros = '23456789'
+    const especiais = '!@#$%&*'
+    const todos = maiusculas + minusculas + numeros + especiais
+
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+
+    const chars = [
+      pick(maiusculas),
+      pick(minusculas),
+      pick(numeros),
+      pick(especiais),
+    ]
+    for (let i = 0; i < 8; i++) chars.push(pick(todos))
+
+    return chars.sort(() => Math.random() - 0.5).join('')
+  }
   const [approvingId, setApprovingId] = useState<string | null>(null)
   const [isActionsModalOpen, setIsActionsModalOpen] = useState(false)
   const [candidaturaForAction, setCandidaturaForAction] = useState<Candidatura | null>(null)
@@ -307,6 +326,7 @@ export default function CandidatosPage() {
 
   const handleOpenApprovalModal = (c: Candidatura) => {
     setCandidaturaForApproval(c)
+    setShowSenhaConta(true)
     setFormData({
       data_contratacao: new Date().toISOString().split('T')[0],
       departamento: c.vaga_departamento || '',
@@ -315,14 +335,23 @@ export default function CandidatosPage() {
       regime_contrato: 'CLT',
       salario: c.vaga_salario ? String(c.vaga_salario) : '',
       criar_conta: true,
-      email_conta: c.email || '',
-      senha_conta: '',
+      email_conta: '',
+      senha_conta: gerarSenhaColaborador(),
     })
     setIsApprovalModalOpen(true)
   }
 
   const handleApproveCandidate = async () => {
     if (!candidaturaForApproval) return
+
+    if (!formData.email_conta.trim()) {
+      toast.error('Informe o email da empresa para criar a conta')
+      return
+    }
+    if (!formData.senha_conta.trim()) {
+      toast.error('Defina ou gere uma senha para a conta')
+      return
+    }
 
     setApprovingId(candidaturaForApproval.id)
     try {
@@ -1050,78 +1079,63 @@ export default function CandidatosPage() {
                 <UserCheck className="w-4 h-4" />
                 Conta de Colaborador
               </h3>
-              <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Criar conta de acesso</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Separada da conta de candidato — o colaborador poderá acessar o painel como funcionário
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.criar_conta}
-                    onCheckedChange={(v) => setFormData({ ...formData, criar_conta: v })}
+              <div className="bg-card border border-[#00D4FF]/30 rounded-xl p-5 space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  Uma conta de colaborador será criada automaticamente. Separada da conta de candidato — o colaborador poderá acessar o painel como funcionário.
+                </p>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    Email da empresa <span className="text-red-400">*</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    value={formData.email_conta}
+                    onChange={(e) => setFormData({ ...formData, email_conta: e.target.value })}
+                    className="bg-background border-border"
+                    placeholder="colaborador@empresa.com"
+                    required
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Será usado como login. Preenchido com o email do candidato — troque pelo email corporativo se necessário.
+                  </p>
                 </div>
 
-                {formData.criar_conta && (
-                  <div className="space-y-3 pt-2 border-t border-border">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Email da conta</Label>
-                      <Input
-                        type="email"
-                        value={formData.email_conta}
-                        onChange={(e) => setFormData({ ...formData, email_conta: e.target.value })}
-                        className="bg-background border-border"
-                        placeholder="email@empresa.com"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Pode ser diferente do email da candidatura (ex: email corporativo)
-                      </p>
-                    </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold">Senha de acesso</Label>
 
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">Senha temporária</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            type={showSenhaConta ? 'text' : 'password'}
-                            value={formData.senha_conta}
-                            onChange={(e) => setFormData({ ...formData, senha_conta: e.target.value })}
-                            className="bg-background border-border pr-10"
-                            placeholder="Mín. 8 chars, maiúscula, número"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowSenhaConta(v => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showSenhaConta ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          title="Gerar senha"
-                          onClick={() => {
-                            const nome = candidaturaForApproval?.nome || 'Colaborador'
-                            const prefixo = nome.trim().split(' ')[0]
-                            const cap = prefixo.charAt(0).toUpperCase() + prefixo.slice(1, 4).toLowerCase()
-                            const num = Math.floor(1000 + Math.random() * 9000)
-                            setFormData({ ...formData, senha_conta: `${cap}@${num}` })
-                            setShowSenhaConta(true)
-                          }}
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Compartilhe esta senha com o colaborador após a aprovação
-                      </p>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showSenhaConta ? 'text' : 'password'}
+                        value={formData.senha_conta}
+                        onChange={(e) => setFormData({ ...formData, senha_conta: e.target.value })}
+                        className="bg-background border-border pr-10"
+                        placeholder="Mín. 8 chars, maiúscula, número"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSenhaConta(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showSenhaConta ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      title="Gerar nova senha"
+                      onClick={() => setFormData({ ...formData, senha_conta: gerarSenhaColaborador() })}
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
                   </div>
-                )}
+                  <p className="text-xs text-muted-foreground">
+                    Defina uma senha ou clique no botão para gerar uma automaticamente. Compartilhe com o colaborador após a aprovação.
+                  </p>
+                </div>
               </div>
             </div>
 

@@ -56,11 +56,24 @@ function displayToISO(display: string): string {
   return `${d.slice(4)}-${d.slice(2, 4)}-${d.slice(0, 2)}`
 }
 
-function gerarSenha(nome: string): string {
-  const prefixo = nome.trim().split(' ')[0]
-  const capitalizado = prefixo.charAt(0).toUpperCase() + prefixo.slice(1, 4).toLowerCase()
-  const num = Math.floor(1000 + Math.random() * 9000)
-  return `${capitalizado}@${num}`
+function gerarSenha(): string {
+  const maiusculas = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const minusculas = 'abcdefghijkmnpqrstuvwxyz'
+  const numeros = '23456789'
+  const especiais = '!@#$%&*'
+  const todos = maiusculas + minusculas + numeros + especiais
+
+  const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+
+  const chars = [
+    pick(maiusculas),
+    pick(minusculas),
+    pick(numeros),
+    pick(especiais),
+  ]
+  for (let i = 0; i < 8; i++) chars.push(pick(todos))
+
+  return chars.sort(() => Math.random() - 0.5).join('')
 }
 
 export function FormColaborador({ colaborador, empresas, onClose, onSaved, userRole, userId }: FormColaboradorProps) {
@@ -89,10 +102,9 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
     escolaridade: colaborador?.escolaridade || '',
   })
 
-  const [criarConta, setCriarConta] = useState(false)
   const [emailConta, setEmailConta] = useState('')
-  const [senhaConta, setSenhaConta] = useState('')
-  const [showSenha, setShowSenha] = useState(false)
+  const [senhaConta, setSenhaConta] = useState(() => gerarSenha())
+  const [showSenha, setShowSenha] = useState(true)
 
   useEffect(() => {
     if (colaborador) {
@@ -116,15 +128,8 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
     }
   }, [colaborador])
 
-  useEffect(() => {
-    if (criarConta && !emailConta) {
-      setEmailConta(formData.email)
-    }
-  }, [criarConta])
-
-  const handleSugerirSenha = () => {
-    setSenhaConta(gerarSenha(formData.nome || 'Colaborador'))
-    setShowSenha(true)
+  const handleRefreshSenha = () => {
+    setSenhaConta(gerarSenha())
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,8 +137,16 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
     setLoading(true)
 
     try {
-      if (!colaborador && criarConta) {
-        // Novo colaborador COM criação de conta → chamar API server-side
+      if (!colaborador) {
+        if (!emailConta.trim()) {
+          toast.error('Informe o email da empresa para criar a conta')
+          return
+        }
+        if (!senhaConta.trim()) {
+          toast.error('Defina ou gere uma senha para a conta')
+          return
+        }
+
         const payload = {
           nome: formData.nome,
           email: formData.email || null,
@@ -172,7 +185,7 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
         return
       }
 
-      // Fluxo sem conta (ou edição) → Supabase direto
+      // Edição → Supabase direto
       const payload = {
         nome: formData.nome,
         email: formData.email || null,
@@ -191,20 +204,12 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
         escolaridade: formData.escolaridade || null,
       }
 
-      if (colaborador) {
-        const { error } = await supabase
-          .from('colaboradores')
-          .update(payload)
-          .eq('id', colaborador.id)
+      const { error } = await supabase
+        .from('colaboradores')
+        .update(payload)
+        .eq('id', colaborador.id)
 
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('colaboradores')
-          .insert([payload])
-
-        if (error) throw error
-      }
+      if (error) throw error
       onSaved()
     } catch (error: any) {
       toast.error('Erro ao salvar colaborador: ' + error.message)
@@ -543,87 +548,76 @@ export function FormColaborador({ colaborador, empresas, onClose, onSaved, userR
                 </div>
               </div>
 
-              {/* Acesso ao Sistema — apenas para novos colaboradores */}
+              {/* Acesso ao Sistema — sempre criado para novos colaboradores */}
               {!colaborador && (
-                <div className="bg-[#0A0E27] border border-[#1e2a5e] border-dashed rounded-xl overflow-hidden">
-                  <div className="px-4 py-4 flex items-center justify-between border-b border-[#1e2a5e]/50">
-                    <div>
-                      <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-[#00D4FF]" />
-                        Acesso ao Sistema
-                      </h3>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Cria uma conta para o colaborador acessar o painel como funcionário
-                      </p>
-                    </div>
-                    {/* Custom Switch Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setCriarConta(!criarConta)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${criarConta ? 'bg-[#00D4FF]' : 'bg-gray-600'}`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${criarConta ? 'translate-x-4' : 'translate-x-0'}`}
-                      />
-                    </button>
+                <div className="bg-[#0A0E27] border border-[#00D4FF]/30 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#1e2a5e] bg-[#111633]">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-[#00D4FF]" />
+                      Acesso ao Sistema
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Uma conta de colaborador será criada automaticamente para acesso ao painel
+                    </p>
                   </div>
 
-                  {criarConta && (
-                    <div className="p-4 space-y-4 bg-[#111633]/50">
-                      <div className="p-3 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 text-xs text-[#00D4FF]">
-                        A conta de colaborador é separada da conta de candidato. O colaborador pode ter as duas contas simultaneamente.
-                      </div>
+                  <div className="p-4 space-y-4">
+                    <div className="p-3 rounded-lg bg-[#00D4FF]/10 border border-[#00D4FF]/20 text-xs text-[#00D4FF]">
+                      A conta de colaborador é separada da conta de candidato. O colaborador pode ter as duas contas simultaneamente.
+                    </div>
 
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-400">Email da conta</label>
-                        <input
-                          type="email"
-                          value={emailConta}
-                          onChange={e => setEmailConta(e.target.value)}
-                          placeholder="email@empresa.com"
-                          required={criarConta}
-                          className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
-                        />
-                        <p className="text-xs text-gray-500">
-                          Pode ser diferente do email corporativo acima (ex: email pessoal)
-                        </p>
-                      </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-gray-400">
+                        Email da empresa <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={emailConta}
+                        onChange={e => setEmailConta(e.target.value)}
+                        placeholder="colaborador@empresa.com"
+                        required
+                        className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Será usado como login do colaborador no sistema.
+                      </p>
+                    </div>
 
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-gray-400">Senha temporária</label>
-                        <div className="flex gap-2">
-                          <div className="relative flex-1">
-                            <input
-                              type={showSenha ? 'text' : 'password'}
-                              value={senhaConta}
-                              onChange={e => setSenhaConta(e.target.value)}
-                              placeholder="Mín. 8 chars, maiúscula, número"
-                              required={criarConta}
-                              className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 pr-10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowSenha(v => !v)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
-                            >
-                              {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
-                          </div>
+                    <div className="space-y-3">
+                      <label className="text-xs font-medium text-gray-400">Senha de acesso</label>
+
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type={showSenha ? 'text' : 'password'}
+                            value={senhaConta}
+                            onChange={e => setSenhaConta(e.target.value)}
+                            placeholder="Mín. 8 chars, maiúscula, número"
+                            required
+                            className="w-full bg-[#111633] border border-[#1e2a5e] rounded-lg px-4 py-2.5 pr-10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00D4FF] focus:ring-1 focus:ring-[#00D4FF]/50 transition-all"
+                          />
                           <button
                             type="button"
-                            onClick={handleSugerirSenha}
-                            title="Gerar senha"
-                            className="px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-all flex items-center justify-center"
+                            onClick={() => setShowSenha(v => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
                           >
-                            <RefreshCw className="w-4 h-4" />
+                            {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
-                        <p className="text-xs text-gray-500">
-                          Compartilhe esta senha com o colaborador após o cadastro
-                        </p>
+                        <button
+                          type="button"
+                          onClick={handleRefreshSenha}
+                          title="Gerar nova senha"
+                          className="px-3 py-2.5 bg-[#111633] border border-[#1e2a5e] rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-all flex items-center justify-center"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </button>
                       </div>
+                      <p className="text-xs text-gray-500">
+                        Defina uma senha ou clique no botão para gerar uma automaticamente. Compartilhe com o colaborador após o cadastro.
+                      </p>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </form>
