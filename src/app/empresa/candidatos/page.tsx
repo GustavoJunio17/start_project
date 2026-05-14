@@ -10,12 +10,17 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Pagination } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Download, CheckCircle, ThumbsDown, Star, MoreVertical, X, Link2, Copy, Eye, EyeOff, RefreshCw, UserCheck } from 'lucide-react'
+import { Search, Download, CheckCircle, ThumbsDown, Star, MoreVertical, X, Link2, Copy, Eye, EyeOff, RefreshCw, UserCheck, Calendar, StickyNote, MessageSquare, Briefcase, History, RotateCcw } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { toast, Toaster } from 'sonner'
 import { ClassificacaoBadge, MatchScoreBadge } from '@/components/ranking/ClassificacaoBadge'
 import { DISCBars } from '@/components/disc/DISCChart'
 import type { Candidato, Vaga } from '@/types/database'
+import { AgendarEntrevistaModal } from '@/components/empresa/candidatos/AgendarEntrevistaModal'
+import { ObservacaoInternaModal } from '@/components/empresa/candidatos/ObservacaoInternaModal'
+import { FeedbackCandidatoModal } from '@/components/empresa/candidatos/FeedbackCandidatoModal'
+import { ConvidarVagaModal } from '@/components/empresa/candidatos/ConvidarVagaModal'
+import { HistoricoCandidatoModal } from '@/components/empresa/candidatos/HistoricoCandidatoModal'
 
 type CandidatoAvaliado = Candidato
 
@@ -114,6 +119,17 @@ export default function CandidatosPage() {
   const [candidatoAvaliadoForAction, setCandidatoAvaliadoForAction] = useState<CandidatoAvaliado | null>(null)
   const [isAvaliadoActionsOpen, setIsAvaliadoActionsOpen] = useState(false)
 
+  // Novos modais de gerenciamento
+  const [agendarTarget, setAgendarTarget] = useState<{ candidaturaId?: string; candidatoId?: string; nome: string } | null>(null)
+  const [observacaoTarget, setObservacaoTarget] = useState<{ candidaturaId?: string; candidatoId?: string; nome: string } | null>(null)
+  const [feedbackTarget, setFeedbackTarget] = useState<{ candidaturaId?: string; candidatoId?: string; nome: string } | null>(null)
+  const [convidarTarget, setConvidarTarget] = useState<{ candidaturaOrigemId?: string; candidatoId?: string; nome: string } | null>(null)
+  const [historicoTarget, setHistoricoTarget] = useState<{ email: string; nome: string } | null>(null)
+
+  // Filtros adicionais (Banco de Talentos)
+  const [filterDisc, setFilterDisc] = useState<'todos' | 'D' | 'I' | 'S' | 'C'>('todos')
+  const [filterCargo, setFilterCargo] = useState('')
+
   const verId = searchParams.get('ver')
 
   useEffect(() => {
@@ -178,7 +194,27 @@ export default function CandidatosPage() {
     if (activeTab === 'rejeito') matchTab = c.status_candidatura === 'reprovado'
     if (activeTab === 'banco_talentos') matchTab = c.disponivel_banco_talentos
     const matchDept = !isGestorRH || gestorDepartamentos.length === 0 || gestorDepartamentos.includes((c.vaga as any)?.departamento || '')
-    return matchSearch && matchVaga && matchTab && matchDept
+
+    // Filtros extras (só para Banco de Talentos)
+    let matchDisc = true
+    let matchCargo = true
+    if (activeTab === 'banco_talentos') {
+      if (filterDisc !== 'todos' && c.perfil_disc) {
+        const perfil = c.perfil_disc as { D: number; I: number; S: number; C: number }
+        const dominante = (Object.entries(perfil) as [keyof typeof perfil, number][])
+          .sort(([, a], [, b]) => b - a)[0]?.[0]
+        matchDisc = dominante === filterDisc
+      } else if (filterDisc !== 'todos') {
+        matchDisc = false
+      }
+      if (filterCargo.trim()) {
+        const term = filterCargo.toLowerCase()
+        matchCargo = (c.cargo_pretendido || '').toLowerCase().includes(term)
+          || ((c.vaga as Vaga)?.titulo || '').toLowerCase().includes(term)
+      }
+    }
+
+    return matchSearch && matchVaga && matchTab && matchDept && matchDisc && matchCargo
   })
 
   useEffect(() => setPage(1), [search, filterVaga, activeTab])
@@ -241,6 +277,29 @@ export default function CandidatosPage() {
         toast.success('Candidato movido para banco de talentos')
       } else {
         toast.error('Erro ao mover para banco de talentos')
+      }
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleChangeStatus = async (newStatus: Candidatura['status'], successMsg: string) => {
+    if (!candidaturaForAction) return
+    setActionLoading(true)
+    try {
+      const res = await fetch('/api/candidaturas/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidatura_id: candidaturaForAction.id, status: newStatus }),
+      })
+      if (res.ok) {
+        setCandidaturas(prev =>
+          prev.map(c => (c.id === candidaturaForAction.id ? { ...c, status: newStatus } : c))
+        )
+        setIsActionsModalOpen(false)
+        toast.success(successMsg)
+      } else {
+        toast.error('Erro ao atualizar status')
       }
     } finally {
       setActionLoading(false)
@@ -470,6 +529,45 @@ export default function CandidatosPage() {
         ))}
       </div>
 
+      {/* Filtros extras — Banco de Talentos */}
+      {activeTab === 'banco_talentos' && (
+        <div className="flex flex-wrap gap-3 items-end bg-[#0f1530] border border-[#1e2a5e] rounded-lg p-3">
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Perfil DISC dominante</Label>
+            <Select value={filterDisc} onValueChange={(v) => setFilterDisc(v as 'todos' | 'D' | 'I' | 'S' | 'C')}>
+              <SelectTrigger className="w-44 bg-card border-border h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="D">D — Dominância</SelectItem>
+                <SelectItem value="I">I — Influência</SelectItem>
+                <SelectItem value="S">S — Estabilidade</SelectItem>
+                <SelectItem value="C">C — Conformidade</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Cargo / Vaga</Label>
+            <Input
+              value={filterCargo}
+              onChange={e => setFilterCargo(e.target.value)}
+              placeholder="Ex: Desenvolvedor, Analista..."
+              className="w-64 bg-card border-border h-9"
+            />
+          </div>
+          {(filterDisc !== 'todos' || filterCargo) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setFilterDisc('todos'); setFilterCargo('') }}
+            >
+              Limpar
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="bg-[#111633] border border-[#1e2a5e] rounded-xl overflow-hidden">
         <div className="p-5">
           <table className="w-full text-sm">
@@ -529,12 +627,10 @@ export default function CandidatosPage() {
                       <td className="px-4 py-3.5"><span className="text-xs text-gray-600">—</span></td>
                       <td className="px-4 py-3.5"><span className="text-xs text-gray-500">{new Date(c.created_at).toLocaleDateString('pt-BR')}</span></td>
                       <td className="px-4 py-3.5 text-right">
-                        {(c.status === 'pendente' || c.status === 'rejeito' || c.status === 'banco_talentos') && (
-                          <button className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors"
-                            onClick={e => { e.stopPropagation(); setCandidaturaForAction(c); setIsActionsModalOpen(true) }}>
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button className="p-1.5 rounded-lg text-gray-500 hover:text-[#00D4FF] hover:bg-[#00D4FF]/10 transition-colors"
+                          onClick={e => { e.stopPropagation(); setCandidaturaForAction(c); setIsActionsModalOpen(true) }}>
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1191,9 +1287,10 @@ export default function CandidatosPage() {
                   variant="outline"
                   className="w-full justify-start gap-3 h-auto py-3 text-left"
                   onClick={() => {
+                    const target = candidaturaForAction!
                     setCandidaturaForAction(null)
                     setIsActionsModalOpen(false)
-                    setTimeout(() => handleOpenApprovalModal(candidaturaForAction!), 100)
+                    setTimeout(() => handleOpenApprovalModal(target), 100)
                   }}
                 >
                   <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -1216,6 +1313,36 @@ export default function CandidatosPage() {
                   <div className="flex-1">
                     <p className="font-medium text-foreground">Enviar Teste DISC</p>
                     <p className="text-xs text-muted-foreground">Gerar link para o candidato responder</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                  onClick={() => {
+                    setAgendarTarget({ candidaturaId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <Calendar className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Agendar Entrevista</p>
+                    <p className="text-xs text-muted-foreground">Definir data, modalidade e link</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-yellow-500/10"
+                  onClick={() => {
+                    setObservacaoTarget({ candidaturaId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <StickyNote className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Observação Interna</p>
+                    <p className="text-xs text-muted-foreground">Registrar nota visível apenas à equipe</p>
                   </div>
                 </Button>
 
@@ -1247,15 +1374,106 @@ export default function CandidatosPage() {
               </>
             )}
 
+            {candidaturaForAction?.status === 'contratado' && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                  onClick={() => {
+                    setAgendarTarget({ candidaturaId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <Calendar className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Agendar Próximas Etapas</p>
+                    <p className="text-xs text-muted-foreground">Onboarding, alinhamento, integração</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-blue-500/10"
+                  onClick={() => handleChangeStatus('pendente', 'Candidato voltou para Pendentes')}
+                  disabled={actionLoading}
+                >
+                  <RotateCcw className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Reverter para Pendente</p>
+                    <p className="text-xs text-muted-foreground">Voltar para fila de triagem</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={() => handleChangeStatus('banco_talentos', 'Movido para Banco de Talentos')}
+                  disabled={actionLoading}
+                >
+                  <Star className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Mover para Banco de Talentos</p>
+                    <p className="text-xs text-muted-foreground">Guardar para futuras oportunidades</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-yellow-500/10"
+                  onClick={() => {
+                    setObservacaoTarget({ candidaturaId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <StickyNote className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Observação Interna</p>
+                    <p className="text-xs text-muted-foreground">Registrar nota</p>
+                  </div>
+                </Button>
+              </>
+            )}
+
             {candidaturaForAction?.status === 'banco_talentos' && (
               <>
                 <Button
                   variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                  onClick={() => {
+                    setConvidarTarget({ candidaturaOrigemId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <Briefcase className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Convidar para nova vaga</p>
+                    <p className="text-xs text-muted-foreground">Criar candidatura em outra vaga aberta</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={() => {
+                    setHistoricoTarget({ email: candidaturaForAction!.email, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <History className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Ver Histórico</p>
+                    <p className="text-xs text-muted-foreground">Candidaturas e testes anteriores</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
                   className="w-full justify-start gap-3 h-auto py-3 text-left"
                   onClick={() => {
+                    const target = candidaturaForAction!
                     setCandidaturaForAction(null)
                     setIsActionsModalOpen(false)
-                    setTimeout(() => handleOpenApprovalModal(candidaturaForAction!), 100)
+                    setTimeout(() => handleOpenApprovalModal(target), 100)
                   }}
                 >
                   <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -1271,7 +1489,7 @@ export default function CandidatosPage() {
                   onClick={handleBackToPending}
                   disabled={actionLoading}
                 >
-                  <CheckCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <RotateCcw className="w-5 h-5 text-blue-400 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="font-medium text-foreground">Voltar para Pendentes</p>
                     <p className="text-xs text-muted-foreground">Recolocar na fila de avaliação</p>
@@ -1280,14 +1498,14 @@ export default function CandidatosPage() {
 
                 <Button
                   variant="outline"
-                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-red-500/10"
-                  onClick={handleReject}
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-orange-500/10"
+                  onClick={() => handleChangeStatus('rejeito', 'Removido do Banco de Talentos')}
                   disabled={actionLoading}
                 >
-                  <ThumbsDown className="w-5 h-5 text-red-400 flex-shrink-0" />
+                  <X className="w-5 h-5 text-orange-400 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-medium text-foreground">Rejeitar</p>
-                    <p className="text-xs text-muted-foreground">Não prosseguir com a candidatura</p>
+                    <p className="font-medium text-foreground">Remover do Banco</p>
+                    <p className="text-xs text-muted-foreground">Mover para Rejeitados</p>
                   </div>
                 </Button>
 
@@ -1314,10 +1532,38 @@ export default function CandidatosPage() {
                   onClick={handleBackToPending}
                   disabled={actionLoading}
                 >
-                  <CheckCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <RotateCcw className="w-5 h-5 text-blue-400 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="font-medium text-foreground">Voltar para Pendentes</p>
+                    <p className="font-medium text-foreground">Reativar (Pendente)</p>
                     <p className="text-xs text-muted-foreground">Reconsiderar candidato</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={() => handleChangeStatus('banco_talentos', 'Movido para Banco de Talentos')}
+                  disabled={actionLoading}
+                >
+                  <Star className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Adicionar ao Banco de Talentos</p>
+                    <p className="text-xs text-muted-foreground">Pode servir para outra vaga</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-blue-500/10"
+                  onClick={() => {
+                    setFeedbackTarget({ candidaturaId: candidaturaForAction!.id, nome: candidaturaForAction!.nome })
+                    setIsActionsModalOpen(false)
+                  }}
+                >
+                  <MessageSquare className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Enviar Feedback</p>
+                    <p className="text-xs text-muted-foreground">Devolutiva ao candidato</p>
                   </div>
                 </Button>
 
@@ -1382,6 +1628,113 @@ export default function CandidatosPage() {
                   <p className="text-xs text-muted-foreground">Candidato ainda não respondeu o teste</p>
                 </div>
               </Button>
+            )}
+
+            {candidatoAvaliadoForAction && candidatoAvaliadoForAction.status_candidatura !== 'reprovado' && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-[#00D4FF]/10"
+                onClick={() => {
+                  setAgendarTarget({ candidatoId: candidatoAvaliadoForAction!.id, nome: candidatoAvaliadoForAction!.nome_completo })
+                  setIsAvaliadoActionsOpen(false)
+                }}
+              >
+                <Calendar className="w-5 h-5 text-[#00D4FF] flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">Agendar Entrevista</p>
+                  <p className="text-xs text-muted-foreground">Data, modalidade e link</p>
+                </div>
+              </Button>
+            )}
+
+            {candidatoAvaliadoForAction?.status_candidatura === 'reprovado' && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-blue-500/10"
+                  onClick={() => handleAvaliadoStatusChange('inscrito')}
+                >
+                  <RotateCcw className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Reativar (Pendente)</p>
+                    <p className="text-xs text-muted-foreground">Reconsiderar candidato</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={async () => {
+                    if (!candidatoAvaliadoForAction) return
+                    await supabase
+                      .from('candidatos')
+                      .update({ disponivel_banco_talentos: true, status_candidatura: 'em_avaliacao' })
+                      .eq('id', candidatoAvaliadoForAction.id)
+                    setCandidatosAvaliados(prev =>
+                      prev.map(c => c.id === candidatoAvaliadoForAction.id
+                        ? { ...c, disponivel_banco_talentos: true, status_candidatura: 'em_avaliacao' }
+                        : c)
+                    )
+                    setIsAvaliadoActionsOpen(false)
+                    toast.success('Adicionado ao Banco de Talentos')
+                  }}
+                >
+                  <Star className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Adicionar ao Banco de Talentos</p>
+                    <p className="text-xs text-muted-foreground">Pode servir para outra vaga</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-blue-500/10"
+                  onClick={() => {
+                    setFeedbackTarget({ candidatoId: candidatoAvaliadoForAction!.id, nome: candidatoAvaliadoForAction!.nome_completo })
+                    setIsAvaliadoActionsOpen(false)
+                  }}
+                >
+                  <MessageSquare className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Enviar Feedback</p>
+                    <p className="text-xs text-muted-foreground">Devolutiva ao candidato</p>
+                  </div>
+                </Button>
+              </>
+            )}
+
+            {candidatoAvaliadoForAction && (
+              <>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-yellow-500/10"
+                  onClick={() => {
+                    setObservacaoTarget({ candidatoId: candidatoAvaliadoForAction!.id, nome: candidatoAvaliadoForAction!.nome_completo })
+                    setIsAvaliadoActionsOpen(false)
+                  }}
+                >
+                  <StickyNote className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Observação Interna</p>
+                    <p className="text-xs text-muted-foreground">Nota só para a equipe</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-auto py-3 text-left hover:bg-purple-500/10"
+                  onClick={() => {
+                    setHistoricoTarget({ email: candidatoAvaliadoForAction!.email, nome: candidatoAvaliadoForAction!.nome_completo })
+                    setIsAvaliadoActionsOpen(false)
+                  }}
+                >
+                  <History className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-foreground">Ver Histórico</p>
+                    <p className="text-xs text-muted-foreground">Candidaturas e testes</p>
+                  </div>
+                </Button>
+              </>
             )}
 
             {(candidatoAvaliadoForAction?.status_candidatura === 'inscrito' || candidatoAvaliadoForAction?.status_candidatura === 'em_avaliacao') && (
@@ -1458,6 +1811,45 @@ export default function CandidatosPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Novos modais de gerenciamento */}
+      <AgendarEntrevistaModal
+        open={!!agendarTarget}
+        onOpenChange={open => !open && setAgendarTarget(null)}
+        candidaturaId={agendarTarget?.candidaturaId}
+        candidatoId={agendarTarget?.candidatoId}
+        candidatoNome={agendarTarget?.nome}
+      />
+      <ObservacaoInternaModal
+        open={!!observacaoTarget}
+        onOpenChange={open => !open && setObservacaoTarget(null)}
+        candidaturaId={observacaoTarget?.candidaturaId}
+        candidatoId={observacaoTarget?.candidatoId}
+        candidatoNome={observacaoTarget?.nome}
+      />
+      <FeedbackCandidatoModal
+        open={!!feedbackTarget}
+        onOpenChange={open => !open && setFeedbackTarget(null)}
+        candidaturaId={feedbackTarget?.candidaturaId}
+        candidatoId={feedbackTarget?.candidatoId}
+        candidatoNome={feedbackTarget?.nome}
+      />
+      <ConvidarVagaModal
+        open={!!convidarTarget}
+        onOpenChange={open => !open && setConvidarTarget(null)}
+        candidaturaOrigemId={convidarTarget?.candidaturaOrigemId}
+        candidatoId={convidarTarget?.candidatoId}
+        candidatoNome={convidarTarget?.nome}
+        onSuccess={() => {
+          fetch('/api/candidaturas/empresa').then(r => r.json()).then(d => Array.isArray(d) && setCandidaturas(d))
+        }}
+      />
+      <HistoricoCandidatoModal
+        open={!!historicoTarget}
+        onOpenChange={open => !open && setHistoricoTarget(null)}
+        email={historicoTarget?.email}
+        candidatoNome={historicoTarget?.nome}
+      />
     </div>
     </>
   )

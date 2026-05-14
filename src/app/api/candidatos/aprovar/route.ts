@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       candidatura_id,
+      candidato_id,
       nome,
       email,
       data_contratacao,
@@ -85,12 +86,12 @@ export async function POST(request: NextRequest) {
         userId = userRows[0].id
       }
 
-      // 1. Atualizar status da candidatura para "contratado" e buscar candidato_id
-      const { rows: candidaturaRows } = await client.query(
-        `UPDATE candidaturas SET status = 'contratado' WHERE id = $1 RETURNING candidato_id`,
+      // 1. Atualizar status da candidatura para "contratado"
+      await client.query(
+        `UPDATE candidaturas SET status = 'contratado' WHERE id = $1`,
         [candidatura_id]
       )
-      const candidatoId = candidaturaRows[0]?.candidato_id ?? null
+      const candidatoId = candidato_id ?? null
 
       // 2. Criar colaborador
       const colaboradorRes = await client.query(
